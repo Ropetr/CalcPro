@@ -1,0 +1,10 @@
+// Execute estes comandos após criar o repositório no GitHub:
+
+git remote add origin https://github.com/SEU_USUARIO/calcpro.git
+git branch -M main
+git push -u origin main
+
+// Substitua SEU_USUARIO pelo seu username do GitHub
+
+// Exemplo:
+// git remote add origin https://github.com/ropetr/calcpro.git
