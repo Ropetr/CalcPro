@@ -1,0 +1,5 @@
+# Redirect www to non-www
+https://www.calcpro.app.br/* https://calcpro.app.br/:splat 301!
+
+# SPA fallback
+/*    /index.html   200
