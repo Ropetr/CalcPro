@@ -156,21 +156,27 @@ export default function DivisoriaDrywallPage() {
   const atualizarMedida = (id: string, campo: keyof Medida, valor: any) => {
     setMedidas(medidas.map(medida => {
       if (medida.id === id) {
-        const updated = { ...medida }
-        
-        if (campo === 'especificacoes' || campo === 'vaos') {
-          updated[campo] = { ...updated[campo], ...valor }
+        if (campo === 'especificacoes') {
+          return {
+            ...medida,
+            especificacoes: { ...medida.especificacoes, ...valor }
+          }
+        } else if (campo === 'vaos') {
+          return {
+            ...medida,
+            vaos: { ...medida.vaos, ...valor }
+          }
         } else {
-          updated[campo] = valor
+          const updated = { ...medida, [campo]: valor }
+          
+          // Calcular área automaticamente
+          if (campo === 'altura' || campo === 'largura') {
+            const altura = parseFloat(campo === 'altura' ? valor : updated.altura) || 0
+            const largura = parseFloat(campo === 'largura' ? valor : updated.largura) || 0
+            updated.area = altura * largura
+          }
+          return updated
         }
-        
-        // Calcular área automaticamente
-        if (campo === 'altura' || campo === 'largura') {
-          const altura = parseFloat(campo === 'altura' ? valor : updated.altura) || 0
-          const largura = parseFloat(campo === 'largura' ? valor : updated.largura) || 0
-          updated.area = altura * largura
-        }
-        return updated
       }
       return medida
     }))
