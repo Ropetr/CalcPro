@@ -163,19 +163,19 @@ export default function Calculators() {
                 <h4 className="font-semibold text-gray-900 mb-3">Recursos de Gestão</h4>
                 <ul className="space-y-2 text-gray-700">
                   <li className="flex items-center">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     Orçamento detalhado
                   </li>
                   <li className="flex items-center">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     Lista completa de materiais
                   </li>
                   <li className="flex items-center">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     Relatórios em PDF
                   </li>
                   <li className="flex items-center">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                    <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
                     Histórico de projetos
                   </li>
                 </ul>

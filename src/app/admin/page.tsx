@@ -57,7 +57,7 @@ const recentActivities = [
     action: 'Novo usuário cadastrado',
     time: '4 horas atrás',
     icon: UserCheck,
-    iconColor: 'text-blue-600',
+    iconColor: 'text-red-600',
   },
   {
     id: 3,
@@ -159,8 +159,8 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                    <Building2 className="h-4 w-4 text-blue-600" />
+                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                    <Building2 className="h-4 w-4 text-red-600" />
                   </div>
                   <span className="text-sm font-medium text-gray-900">Divisória Drywall</span>
                 </div>

@@ -141,7 +141,7 @@ export default function AdminEmpresas() {
                       empresa.plano === 'Empresarial' 
                         ? 'bg-purple-100 text-purple-800'
                         : empresa.plano === 'Profissional'
-                        ? 'bg-blue-100 text-blue-800'
+                        ? 'bg-red-100 text-red-800'
                         : 'bg-green-100 text-green-800'
                     }`}>
                       {empresa.plano}

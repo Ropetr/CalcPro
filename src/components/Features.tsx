@@ -132,7 +132,7 @@ export default function Features() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Tempo de orçamento</span>
-                  <span className="font-semibold text-blue-600">-80%</span>
+                  <span className="font-semibold text-red-600">-80%</span>
                 </div>
               </div>
             </div>

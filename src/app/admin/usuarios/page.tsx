@@ -154,7 +154,7 @@ export default function AdminUsuarios() {
                         </span>
                       ) : (
                         usuario.permissoes.slice(0, 2).map((permissao, index) => (
-                          <span key={index} className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                          <span key={index} className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
                             {permissao}
                           </span>
                         ))

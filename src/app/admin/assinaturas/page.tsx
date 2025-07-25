@@ -88,7 +88,7 @@ export default function AdminAssinaturas() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <CreditCard className="h-8 w-8 text-blue-600" />
+              <CreditCard className="h-8 w-8 text-red-600" />
             </div>
             <div className="ml-5">
               <p className="text-sm font-medium text-gray-500">Assinaturas Ativas</p>
@@ -188,7 +188,7 @@ export default function AdminAssinaturas() {
                       assinatura.plano === 'Empresarial' 
                         ? 'bg-purple-100 text-purple-800'
                         : assinatura.plano === 'Profissional'
-                        ? 'bg-blue-100 text-blue-800'
+                        ? 'bg-red-100 text-red-800'
                         : 'bg-green-100 text-green-800'
                     }`}>
                       {assinatura.plano}
