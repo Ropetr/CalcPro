@@ -12,13 +12,9 @@ export default function VerificacaoPage() {
   const email = searchParams.get('email')
   
   const [emailCode, setEmailCode] = useState(['', '', '', '', '', ''])
-  const [smsCode, setSmsCode] = useState(['', '', '', ''])
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false)
-  const [isSubmittingSms, setIsSubmittingSms] = useState(false)
   const [isResendingEmail, setIsResendingEmail] = useState(false)
-  const [isResendingSms, setIsResendingSms] = useState(false)
   const [emailError, setEmailError] = useState('')
-  const [smsError, setSmsError] = useState('')
   const [emailVerified, setEmailVerified] = useState(false)
   const [smsVerified, setSmsVerified] = useState(true) // SMS desabilitado - sempre verificado
   const [countdown, setCountdown] = useState(60)
@@ -26,7 +22,6 @@ export default function VerificacaoPage() {
 
   // Refs para os inputs
   const emailInputRefs = useRef<(HTMLInputElement | null)[]>([])
-  const smsInputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   // Countdown para reenvio
   useEffect(() => {
@@ -65,34 +60,10 @@ export default function VerificacaoPage() {
     }
   }
 
-  // Função para lidar com mudança nos inputs de SMS
-  const handleSmsCodeChange = (index: number, value: string) => {
-    if (value.length > 1) return // Apenas um dígito por input
-    
-    const newCode = [...smsCode]
-    newCode[index] = value
-    setSmsCode(newCode)
-    setSmsError('')
-
-    // Auto-focus no próximo input
-    if (value && index < 3) {
-      smsInputRefs.current[index + 1]?.focus()
-    }
-
-    // Auto-submit quando completar
-    if (newCode.every(digit => digit !== '') && !isSubmittingSms) {
-      handleSmsVerification(newCode.join(''))
-    }
-  }
-
   // Função para lidar com backspace
-  const handleKeyDown = (e: React.KeyboardEvent, index: number, type: 'email' | 'sms') => {
-    if (e.key === 'Backspace' && !e.currentTarget.value && index > 0) {
-      if (type === 'email') {
-        emailInputRefs.current[index - 1]?.focus()
-      } else {
-        smsInputRefs.current[index - 1]?.focus()
-      }
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'Backspace' && !(e.currentTarget as HTMLInputElement).value && index > 0) {
+      emailInputRefs.current[index - 1]?.focus()
     }
   }
 
@@ -123,34 +94,6 @@ export default function VerificacaoPage() {
     }
   }
 
-  // Verificar código SMS
-  const handleSmsVerification = async (code: string) => {
-    if (!email) return
-    
-    setIsSubmittingSms(true)
-    setSmsError('')
-
-    try {
-      const result = verifySmsCode(email, code)
-      
-      if (result.success) {
-        setSmsVerified(true)
-        // Se ambos estão verificados, redirecionar para dashboard
-        if (emailVerified) {
-          setTimeout(() => router.push('/dashboard'), 1500)
-        }
-      } else {
-        setSmsError(result.error || 'Erro na verificação')
-        // Limpar inputs em caso de erro
-        setSmsCode(['', '', '', ''])
-        smsInputRefs.current[0]?.focus()
-      }
-    } catch (error) {
-      setSmsError('Erro interno. Tente novamente.')
-    } finally {
-      setIsSubmittingSms(false)
-    }
-  }
 
   // Reenviar código de email
   const handleResendEmail = async () => {
@@ -175,28 +118,6 @@ export default function VerificacaoPage() {
     }
   }
 
-  // Reenviar código SMS
-  const handleResendSms = async () => {
-    if (!email || !canResend) return
-    
-    setIsResendingSms(true)
-    
-    try {
-      const result = await resendSmsCode(email)
-      if (result.success) {
-        setCountdown(60)
-        setCanResend(false)
-        setSmsCode(['', '', '', ''])
-        smsInputRefs.current[0]?.focus()
-      } else {
-        setSmsError(result.error || 'Erro ao reenviar código')
-      }
-    } catch (error) {
-      setSmsError('Erro interno. Tente novamente.')
-    } finally {
-      setIsResendingSms(false)
-    }
-  }
 
   if (!email) {
     return null // Será redirecionado pelo useEffect
@@ -259,13 +180,13 @@ export default function VerificacaoPage() {
                 {emailCode.map((digit, index) => (
                   <input
                     key={index}
-                    ref={el => emailInputRefs.current[index] = el}
+                    ref={el => { emailInputRefs.current[index] = el }}
                     type="text"
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleEmailCodeChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, index, 'email')}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
                     className="w-12 h-12 text-center text-xl font-bold border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     disabled={isSubmittingEmail || emailVerified}
                   />
