@@ -1,3 +1,5 @@
+'use client'
+
 import { 
   Calculator, 
   TrendingUp, 
@@ -8,6 +10,8 @@ import {
   BarChart3,
   ArrowUpRight
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import VerificationBanner from '@/components/VerificationBanner'
 
 const stats = [
   {
@@ -95,10 +99,14 @@ const quickActions = [
 ]
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+
   return (
     <div>
+      <VerificationBanner />
+      
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Bem-vindo, João!</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Bem-vindo, {user?.name?.split(' ')[0] || 'Usuário'}!</h1>
         <p className="text-gray-600">Acompanhe seus projetos e economize tempo com nossas calculadoras</p>
       </div>
 

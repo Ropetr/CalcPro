@@ -1,3 +1,5 @@
+'use client'
+
 import { 
   LayoutDashboard, 
   Calculator, 
@@ -10,6 +12,9 @@ import {
   X
 } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { getSubscriptionStatus } from '@/lib/auth'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -24,7 +29,12 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  const { user, logout } = useAuth()
+  
+  const subscriptionInfo = user ? getSubscriptionStatus(user) : null
+
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
@@ -34,10 +44,11 @@ export default function DashboardLayout({
               <Menu className="h-6 w-6" />
             </button>
             <Link href="/dashboard" className="flex items-center ml-4 md:ml-0">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center mr-3">
-                <Calculator className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-900">CalcPro</span>
+              <img 
+                src="/logo-horizontal.png" 
+                alt="CalcPro" 
+                className="h-8 w-auto"
+              />
             </Link>
           </div>
 
@@ -47,11 +58,15 @@ export default function DashboardLayout({
                 <User className="h-4 w-4 text-gray-600" />
               </div>
               <div className="hidden md:block">
-                <div className="text-sm font-medium text-gray-900">João Silva</div>
-                <div className="text-xs text-gray-500">Construtora ABC</div>
+                <div className="text-sm font-medium text-gray-900">{user?.name}</div>
+                <div className="text-xs text-gray-500">{user?.company}</div>
               </div>
             </div>
-            <button className="p-2 text-gray-400 hover:text-gray-600">
+            <button 
+              onClick={logout}
+              className="p-2 text-gray-400 hover:text-gray-600"
+              title="Sair"
+            >
               <LogOut className="h-5 w-5" />
             </button>
           </div>
@@ -83,11 +98,18 @@ export default function DashboardLayout({
           <div className="px-4 py-4 border-t border-gray-200">
             <div className="bg-primary-50 rounded-lg p-4">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
-                <span className="text-sm font-medium text-gray-900">Plano Profissional</span>
+                <div className={`w-3 h-3 rounded-full mr-2 ${
+                  subscriptionInfo?.status === 'trial' ? 'bg-yellow-400' : 
+                  subscriptionInfo?.status === 'expired' ? 'bg-red-400' : 'bg-green-400'
+                }`}></div>
+                <span className="text-sm font-medium text-gray-900">
+                  {user?.subscription.plan === 'trial' ? 'Teste Gratuito' : 
+                   user?.subscription.plan === 'basic' ? 'Plano Básico' :
+                   user?.subscription.plan === 'pro' ? 'Plano Pro' : 'Plano Enterprise'}
+                </span>
               </div>
               <p className="text-xs text-gray-600 mt-1">
-                15 calculadoras disponíveis
+                {subscriptionInfo?.message}
               </p>
               <Link 
                 href="/dashboard/plano" 
@@ -105,5 +127,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </ProtectedRoute>
   )
 }

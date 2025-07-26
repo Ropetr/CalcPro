@@ -9,7 +9,12 @@ export default function AdminHeader() {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 h-16 fixed top-0 left-0 right-0 z-30">
       <div className="flex items-center justify-between h-full px-6">
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
+          <img 
+            src="/logo-horizontal.png" 
+            alt="CalcPro" 
+            className="h-8 w-auto"
+          />
           <h1 className="text-xl font-semibold text-gray-900">Painel Administrativo</h1>
         </div>
 

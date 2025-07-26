@@ -1,7 +1,75 @@
+'use client'
+
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
 
 export default function Registro() {
+  const [formData, setFormData] = useState({
+    company: '',
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: ''
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  
+  const { register } = useAuth()
+  const router = useRouter()
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setIsSubmitting(true)
+
+    // Validações básicas
+    if (!formData.company || !formData.name || !formData.email || !formData.phone || !formData.password || !formData.confirmPassword) {
+      setError('Preencha todos os campos')
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!termsAccepted) {
+      setError('Você deve aceitar os termos de uso')
+      setIsSubmitting(false)
+      return
+    }
+
+    try {
+      const result = await register(formData)
+      
+      if (result.success) {
+        if (result.requiresVerification) {
+          // Redirecionar para página de verificação
+          router.push(`/verificacao?email=${encodeURIComponent(formData.email)}`)
+        } else {
+          // Caso não precise de verificação (fallback)
+          router.push('/dashboard')
+        }
+      } else {
+        setError(result.error || 'Erro ao criar conta')
+      }
+    } catch (err) {
+      setError('Erro interno. Tente novamente.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -11,6 +79,13 @@ export default function Registro() {
         </Link>
         
         <div className="text-center">
+          <div className="flex justify-center mb-6">
+            <img 
+              src="/logo-vertical.png" 
+              alt="CalcPro" 
+              className="h-20 w-auto"
+            />
+          </div>
           <h2 className="text-3xl font-bold text-gray-900">
             Crie sua conta
           </h2>
@@ -22,7 +97,7 @@ export default function Registro() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="company" className="block text-sm font-medium text-gray-700">
                 Nome da Empresa
@@ -33,6 +108,8 @@ export default function Registro() {
                   name="company"
                   type="text"
                   required
+                  value={formData.company}
+                  onChange={handleInputChange}
                   className="input-field"
                   placeholder="Sua Empresa Ltda"
                 />
@@ -49,6 +126,8 @@ export default function Registro() {
                   name="name"
                   type="text"
                   required
+                  value={formData.name}
+                  onChange={handleInputChange}
                   className="input-field"
                   placeholder="João Silva"
                 />
@@ -66,6 +145,8 @@ export default function Registro() {
                   type="email"
                   autoComplete="email"
                   required
+                  value={formData.email}
+                  onChange={handleInputChange}
                   className="input-field"
                   placeholder="joao@empresa.com"
                 />
@@ -82,6 +163,8 @@ export default function Registro() {
                   name="phone"
                   type="tel"
                   required
+                  value={formData.phone}
+                  onChange={handleInputChange}
                   className="input-field"
                   placeholder="(11) 99999-9999"
                 />
@@ -92,16 +175,29 @@ export default function Registro() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Senha
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
-                  className="input-field"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="input-field pr-10"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -109,16 +205,29 @@ export default function Registro() {
               <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
                 Confirmar Senha
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="confirm-password"
-                  name="confirm-password"
-                  type="password"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
-                  className="input-field"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className="input-field pr-10"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -129,6 +238,8 @@ export default function Registro() {
                   name="terms"
                   type="checkbox"
                   required
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
                 <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
@@ -144,12 +255,19 @@ export default function Registro() {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
             <div>
               <button
                 type="submit"
-                className="w-full btn-primary"
+                disabled={isSubmitting}
+                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Começar teste gratuito
+                {isSubmitting ? 'Criando conta...' : 'Começar teste gratuito'}
               </button>
             </div>
           </form>

@@ -1,5 +1,6 @@
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function AdminLayout({
   children,
@@ -7,6 +8,7 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-gray-100">
       <AdminHeader />
       <div className="flex">
@@ -16,5 +18,6 @@ export default function AdminLayout({
         </main>
       </div>
     </div>
+    </ProtectedRoute>
   )
 }
