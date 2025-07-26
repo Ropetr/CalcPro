@@ -15,7 +15,9 @@
       "Bash(npx wrangler auth:*)",
       "Bash(npx wrangler:*)",
       "Bash(rm:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(nslookup:*)",
+      "WebFetch(domain:calcpro.app.br)"
     ],
     "deny": []
   }
