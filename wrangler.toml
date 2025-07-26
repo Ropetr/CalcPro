@@ -1,12 +1,13 @@
 name = "calcpro"
 compatibility_date = "2024-01-15"
+pages_build_output_dir = "out"
 
 [env.production]
 name = "calcpro"
 route = "calcpro.app.br/*"
 
 [[env.production.r2_buckets]]
-binding = "ASSETS"
+binding = "CALCPRO_ASSETS"
 bucket_name = "calcpro-assets"
 
 [env.production.vars]
