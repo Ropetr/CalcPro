@@ -320,7 +320,8 @@ export default function ForroModularPage() {
     const placasInteirasC = Math.floor(comprimento / placaDimensions.comprimento)
     const placasInteiras = placasInteirasL * placasInteirasC
     
-    let placasParaRecortes = 0
+    let placasParaRecortesLargura = 0
+    let placasParaRecortesComprimento = 0
     const sobras = []
     
     // Recorte na largura
@@ -328,8 +329,7 @@ export default function ForroModularPage() {
     if (recorteL > 0) {
       const recortesPorPlaca = Math.floor(placaDimensions.largura / recorteL)
       const totalRecortesL = Math.ceil(comprimento / placaDimensions.comprimento)
-      const placasNecessarias = Math.ceil(totalRecortesL / recortesPorPlaca)
-      placasParaRecortes += placasNecessarias
+      placasParaRecortesLargura = Math.ceil(totalRecortesL / recortesPorPlaca)
       
       // Calcular sobra das placas de recorte
       const sobrarDaPlaca = placaDimensions.largura - (recorteL * recortesPorPlaca)
@@ -347,8 +347,7 @@ export default function ForroModularPage() {
     if (recorteC > 0) {
       const recortesPorPlaca = Math.floor(placaDimensions.comprimento / recorteC)
       const totalRecortesC = Math.ceil(largura / placaDimensions.largura)
-      const placasNecessarias = Math.ceil(totalRecortesC / recortesPorPlaca)
-      placasParaRecortes += placasNecessarias
+      placasParaRecortesComprimento = Math.ceil(totalRecortesC / recortesPorPlaca)
       
       // Calcular sobra das placas de recorte
       const sobrarDaPlaca = placaDimensions.comprimento - (recorteC * recortesPorPlaca)
@@ -361,6 +360,7 @@ export default function ForroModularPage() {
       }
     }
     
+    const placasParaRecortes = placasParaRecortesLargura + placasParaRecortesComprimento
     const totalPlacas = placasInteiras + placasParaRecortes
     const placasTradicional = Math.ceil(largura / placaDimensions.largura) * Math.ceil(comprimento / placaDimensions.comprimento)
     
@@ -420,8 +420,13 @@ export default function ForroModularPage() {
       placas: {
         inteiras: placasInteiras,
         recortes: placasParaRecortes,
+        recortesLargura: placasParaRecortesLargura,
+        recortesComprimento: placasParaRecortesComprimento,
         total: totalPlacas,
-        economia: placasTradicional - totalPlacas
+        economia: placasTradicional - totalPlacas,
+        // Incluir tamanhos dos recortes para exibição
+        tamanhoRecorteLargura: recorteL > 0 ? recorteL : 0,
+        tamanhoRecorteComprimento: recorteC > 0 ? recorteC : 0
       },
       perfis: perfisRetorno,
       cantoneiras: {
@@ -1281,14 +1286,21 @@ export default function ForroModularPage() {
                                           Placas Modulares
                                         </h6>
                                         <div className="space-y-1 text-xs">
-                                          <div className="flex justify-between">
-                                            <span>Placas inteiras:</span>
-                                            <span className="font-medium">{analise.placas.inteiras} un</span>
-                                          </div>
-                                          <div className="flex justify-between">
-                                            <span>Placas p/ recortes:</span>
-                                            <span className="font-medium">{analise.placas.recortes} un</span>
-                                          </div>
+                                          {analise.placas.inteiras > 0 && (
+                                            <div className="text-xs">
+                                              <span>{analise.placas.inteiras} placas - sem corte</span>
+                                            </div>
+                                          )}
+                                          {analise.placas.recortesLargura > 0 && (
+                                            <div className="text-xs">
+                                              <span>{analise.placas.recortesLargura} placas - cortar peças com tamanho {analise.placas.tamanhoRecorteLargura.toFixed(2)}m (largura)</span>
+                                            </div>
+                                          )}
+                                          {analise.placas.recortesComprimento > 0 && (
+                                            <div className="text-xs">
+                                              <span>{analise.placas.recortesComprimento} placas - cortar peças com tamanho {analise.placas.tamanhoRecorteComprimento.toFixed(2)}m (comprimento)</span>
+                                            </div>
+                                          )}
                                           <hr className="border-blue-200" />
                                           <div className="flex justify-between font-semibold">
                                             <span>Total:</span>

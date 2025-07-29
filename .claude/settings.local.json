@@ -17,7 +17,14 @@
       "Bash(rm:*)",
       "Bash(cp:*)",
       "Bash(nslookup:*)",
-      "WebFetch(domain:calcpro.app.br)"
+      "WebFetch(domain:calcpro.app.br)",
+      "Bash(npm run typecheck:*)",
+      "Bash(taskkill:*)",
+      "Bash(grep:*)",
+      "Bash(npm run lint)",
+      "Bash(pkill:*)",
+      "Bash(node:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

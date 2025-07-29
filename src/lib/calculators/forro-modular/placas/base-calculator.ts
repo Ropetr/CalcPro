@@ -11,9 +11,9 @@ import {
  * Implementa a lógica genérica fornecida pelo usuário
  */
 export class BasePlacaCalculator {
-  protected nome: string
-  protected dimensoes: DimensoesPlaca
-  protected codigo: string
+  public nome: string
+  public dimensoes: DimensoesPlaca
+  public codigo: string
 
   constructor(nome: string, dimensoes: DimensoesPlaca, codigo: string) {
     this.nome = nome

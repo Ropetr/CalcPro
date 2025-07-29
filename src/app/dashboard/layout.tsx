@@ -9,7 +9,8 @@ import {
   User,
   LogOut,
   Menu,
-  X
+  X,
+  FolderOpen
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,6 +19,7 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Projetos', href: '/dashboard/projetos', icon: FolderOpen },
   { name: 'Calculadoras', href: '/dashboard/calculadoras', icon: Calculator },
   { name: 'Relatórios', href: '/dashboard/relatorios', icon: FileText },
   { name: 'Análises', href: '/dashboard/analises', icon: BarChart3 },

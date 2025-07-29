@@ -4,12 +4,46 @@ const USERS_KEY = 'calcpro_users'
 const CURRENT_USER_KEY = 'calcpro_current_user'
 const VERIFICATION_CODES_KEY = 'calcpro_verification_codes'
 
+// Função para criar usuário admin padrão
+const createDefaultAdmin = (): StoredUser => {
+  const now = new Date().toISOString()
+  return {
+    id: 'admin-default',
+    name: 'Administrador CalcPro',
+    email: 'admin@calcpro.app.br',
+    phone: '(11) 99999-9999',
+    company: 'CalcPro Sistemas',
+    password: 'Rodelo122509.',
+    createdAt: now,
+    verification: {
+      emailVerified: true,
+      phoneVerified: true,
+      emailVerifiedAt: now
+    },
+    subscription: {
+      plan: 'premium',
+      status: 'active',
+      createdAt: now
+    }
+  }
+}
+
 // Funções utilitárias para localStorage
 export const authStorage = {
   getUsers: (): StoredUser[] => {
     if (typeof window === 'undefined') return []
     const users = localStorage.getItem(USERS_KEY)
-    return users ? JSON.parse(users) : []
+    const parsedUsers = users ? JSON.parse(users) : []
+    
+    // Verificar se admin padrão existe, se não, criar
+    const adminExists = parsedUsers.find((user: StoredUser) => user.email === 'admin@calcpro.app.br')
+    if (!adminExists) {
+      const defaultAdmin = createDefaultAdmin()
+      parsedUsers.push(defaultAdmin)
+      localStorage.setItem(USERS_KEY, JSON.stringify(parsedUsers))
+    }
+    
+    return parsedUsers
   },
 
   saveUsers: (users: StoredUser[]) => {

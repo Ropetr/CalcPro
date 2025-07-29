@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { 
   Calculator, 
   TrendingUp, 
@@ -8,10 +9,16 @@ import {
   Building2,
   Activity,
   BarChart3,
-  ArrowUpRight
+  ArrowUpRight,
+  FolderOpen,
+  Star,
+  Plus
 } from 'lucide-react'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import VerificationBanner from '@/components/VerificationBanner'
+import { ProjetoService } from '@/lib/projetos'
+import { Projeto, EstatisticasProjeto } from '@/types/projeto'
 
 const stats = [
   {
@@ -76,6 +83,13 @@ const recentCalculations = [
 
 const quickActions = [
   {
+    name: 'Novo Projeto',
+    description: 'Criar projeto',
+    href: '/dashboard/projetos',
+    icon: FolderOpen,
+    color: 'bg-blue-100 text-blue-600',
+  },
+  {
     name: 'Nova Calculadora',
     description: 'Iniciar novo cálculo',
     href: '/dashboard/calculadoras',
@@ -100,6 +114,18 @@ const quickActions = [
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const [projetos, setProjetos] = useState<Projeto[]>([])
+  const [estatisticas, setEstatisticas] = useState<EstatisticasProjeto | null>(null)
+
+  useEffect(() => {
+    // Carregar projetos recentes
+    const projetosRecentes = ProjetoService.filtrarProjetos({}).slice(0, 5)
+    setProjetos(projetosRecentes)
+    
+    // Carregar estatísticas
+    const stats = ProjetoService.obterEstatisticas()
+    setEstatisticas(stats)
+  }, [])
 
   return (
     <div>
@@ -206,6 +232,75 @@ export default function DashboardPage() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Projetos Recentes */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Projetos Recentes</h3>
+              <Link 
+                href="/dashboard/projetos"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Ver todos
+              </Link>
+            </div>
+            
+            {projetos.length === 0 ? (
+              <div className="text-center py-6">
+                <FolderOpen className="mx-auto h-12 w-12 text-gray-400" />
+                <h4 className="mt-2 text-sm font-medium text-gray-900">Nenhum projeto</h4>
+                <p className="mt-1 text-sm text-gray-500">Crie seu primeiro projeto</p>
+                <Link
+                  href="/dashboard/projetos"
+                  className="mt-3 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Novo Projeto
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projetos.map((projeto) => (
+                  <Link
+                    key={projeto.id}
+                    href={`/dashboard/projeto?id=${projeto.id}`}
+                    className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+                  >
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <span className="text-xl">
+                          {projeto.categoria === 'divisoria' ? '🧱' : 
+                           projeto.categoria === 'forro' ? '🏠' : 
+                           projeto.categoria === 'piso' ? '🔲' : '🏗️'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-3 flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {projeto.nome}
+                        </div>
+                        {projeto.favorito && <Star className="h-3 w-3 text-yellow-500 ml-2" />}
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <div className="text-xs text-gray-500">
+                          {projeto.calculos.length} cálculo(s) • {projeto.categoria}
+                        </div>
+                        <div className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                          projeto.status === 'rascunho' ? 'bg-gray-100 text-gray-700' :
+                          projeto.status === 'em-andamento' ? 'bg-blue-100 text-blue-700' :
+                          projeto.status === 'concluido' ? 'bg-green-100 text-green-700' :
+                          'bg-orange-100 text-orange-700'
+                        }`}>
+                          {projeto.status.replace('-', ' ')}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Usage Summary */}

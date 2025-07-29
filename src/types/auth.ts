@@ -12,7 +12,7 @@ export interface User {
     phoneVerifiedAt?: string
   }
   subscription: {
-    plan: 'trial' | 'basic' | 'pro' | 'enterprise'
+    plan: 'trial' | 'basic' | 'pro' | 'enterprise' | 'premium'
     status: 'active' | 'expired' | 'cancelled'
     trialEndsAt?: string
     createdAt: string
