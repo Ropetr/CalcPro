@@ -152,7 +152,7 @@ export class BasePlacaCalculator {
       }]
       
       // Cálculo da sobra da placa
-      const sobraComprimento = this.dimensoes.comprimento - (calculoComprimento.pedacoNecessario * recortesPorPlaca)
+      const sobraComprimento = Math.round((this.dimensoes.comprimento - (calculoComprimento.pedacoNecessario * recortesPorPlaca)) * 100) / 100
       const sobraTamanho = `${this.dimensoes.largura}m × ${sobraComprimento}m`
       
       recortes.comprimento = {
