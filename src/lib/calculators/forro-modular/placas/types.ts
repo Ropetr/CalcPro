@@ -18,6 +18,19 @@ export interface RecorteInfo {
   tamanhoPorPeca: string
   sobraPorPeca: string
   aproveitavel: boolean
+  detalhamentoPecas?: {
+    tamanho: string
+    quantidade: number
+  }[]
+  detalhamentoAproveitamento?: {
+    placasNecessarias: number
+    pecasPorPlaca: number
+    totalPecas: number
+    sobra: {
+      tamanho: string
+      aproveitavel: boolean
+    }
+  }
 }
 
 export interface RecortesPlaca {
@@ -25,6 +38,14 @@ export interface RecortesPlaca {
   comprimento: RecorteInfo | null
   canto: {
     tamanho: string
+    aproveitadoDaSobraLargura?: boolean
+    aproveitadoDaSobraComprimento?: boolean
+    precisaPlacaAdicional?: boolean
+    detalhamentoPlacaAdicional?: {
+      placasNecessarias: number
+      tamanhoCorte: string
+      sobra: string
+    }
   } | null
 }
 

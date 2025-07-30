@@ -21,6 +21,7 @@ import {
 import Link from 'next/link'
 import { calcularPerfisMultiplosAmbientes, calcularPerfisT } from '@/lib/calculators/forro-modular/perfis'
 import { calcularCantoneirasMultiplosAmbientes, cantoneiraCalculator } from '@/lib/calculators/forro-modular/cantoneiras'
+import { calcularPlacas } from '@/lib/calculators/forro-modular/placas'
 
 interface CalculationResult {
   placas: number
@@ -315,54 +316,51 @@ export default function ForroModularPage() {
     const largura = parseFloat(ambiente.largura)
     const comprimento = parseFloat(ambiente.comprimento)
     
-    // ANÁLISE DAS PLACAS
-    const placasInteirasL = Math.floor(largura / placaDimensions.largura)
-    const placasInteirasC = Math.floor(comprimento / placaDimensions.comprimento)
-    const placasInteiras = placasInteirasL * placasInteirasC
+    // ANÁLISE DAS PLACAS - usando sistema modular otimizado
+    const tipoPlacaCalculadora = tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
+    const resultadoPlacas = calcularPlacas(largura, comprimento, tipoPlacaCalculadora);
     
-    let placasParaRecortesLargura = 0
-    let placasParaRecortesComprimento = 0
-    const sobras = []
+    // Extrair informações do resultado para compatibilidade com interface
+    const placasInteiras = resultadoPlacas.detalhamento.placasInteiras;
+    const placasParaRecortes = resultadoPlacas.detalhamento.placasComRecorte;
+    const totalPlacas = resultadoPlacas.totalPlacas;
+    const placasTradicional = Math.ceil(largura / placaDimensions.largura) * Math.ceil(comprimento / placaDimensions.comprimento);
     
-    // Recorte na largura
-    const recorteL = largura - (placasInteirasL * placaDimensions.largura)
-    if (recorteL > 0) {
-      const recortesPorPlaca = Math.floor(placaDimensions.largura / recorteL)
-      const totalRecortesL = Math.ceil(comprimento / placaDimensions.comprimento)
-      placasParaRecortesLargura = Math.ceil(totalRecortesL / recortesPorPlaca)
-      
-      // Calcular sobra das placas de recorte
-      const sobrarDaPlaca = placaDimensions.largura - (recorteL * recortesPorPlaca)
-      if (sobrarDaPlaca > 0.1) {
-        sobras.push({
-          tipo: 'Placa (largura)',
-          medida: sobrarDaPlaca,
-          aproveitavel: sobrarDaPlaca > 0.2
-        })
-      }
+    // Informações sobre os recortes
+    let placasParaRecortesLargura = 0;
+    let placasParaRecortesComprimento = 0;
+    let tamanhoRecorteLargura = 0;
+    let tamanhoRecorteComprimento = 0;
+    
+    if (resultadoPlacas.recortes.largura) {
+      placasParaRecortesLargura = resultadoPlacas.recortes.largura.quantidade;
+      tamanhoRecorteLargura = resultadoPlacas.calculo.largura.pedacoNecessario;
     }
     
-    // Recorte no comprimento
-    const recorteC = comprimento - (placasInteirasC * placaDimensions.comprimento)
-    if (recorteC > 0) {
-      const recortesPorPlaca = Math.floor(placaDimensions.comprimento / recorteC)
-      const totalRecortesC = Math.ceil(largura / placaDimensions.largura)
-      placasParaRecortesComprimento = Math.ceil(totalRecortesC / recortesPorPlaca)
-      
-      // Calcular sobra das placas de recorte
-      const sobrarDaPlaca = placaDimensions.comprimento - (recorteC * recortesPorPlaca)
-      if (sobrarDaPlaca > 0.1) {
-        sobras.push({
-          tipo: 'Placa (comprimento)',
-          medida: sobrarDaPlaca,
-          aproveitavel: sobrarDaPlaca > 0.2
-        })
-      }
+    if (resultadoPlacas.recortes.comprimento) {
+      placasParaRecortesComprimento = resultadoPlacas.recortes.comprimento.quantidade;
+      tamanhoRecorteComprimento = resultadoPlacas.calculo.comprimento.pedacoNecessario;
     }
     
-    const placasParaRecortes = placasParaRecortesLargura + placasParaRecortesComprimento
-    const totalPlacas = placasInteiras + placasParaRecortes
-    const placasTradicional = Math.ceil(largura / placaDimensions.largura) * Math.ceil(comprimento / placaDimensions.comprimento)
+    // Criar lista de sobras baseada nas observações
+    const sobras = [];
+    if (resultadoPlacas.recortes.largura?.aproveitavel) {
+      const [larguraSobra, comprimentoSobra] = resultadoPlacas.recortes.largura.sobraPorPeca.split(' × ').map(s => parseFloat(s));
+      sobras.push({
+        tipo: 'Placa (largura)',
+        medida: larguraSobra,
+        aproveitavel: true
+      });
+    }
+    
+    if (resultadoPlacas.recortes.comprimento?.aproveitavel) {
+      const [larguraSobra, comprimentoSobra] = resultadoPlacas.recortes.comprimento.sobraPorPeca.split(' × ').map(s => parseFloat(s));
+      sobras.push({
+        tipo: 'Placa (comprimento)', 
+        medida: comprimentoSobra,
+        aproveitavel: true
+      });
+    }
     
     // ANÁLISE DOS PERFIS T - usando sistema modular
     const perfisCalculados = calcularPerfisT(largura, comprimento, placaDimensions)
@@ -425,8 +423,8 @@ export default function ForroModularPage() {
         total: totalPlacas,
         economia: placasTradicional - totalPlacas,
         // Incluir tamanhos dos recortes para exibição
-        tamanhoRecorteLargura: recorteL > 0 ? recorteL : 0,
-        tamanhoRecorteComprimento: recorteC > 0 ? recorteC : 0
+        tamanhoRecorteLargura: tamanhoRecorteLargura,
+        tamanhoRecorteComprimento: tamanhoRecorteComprimento
       },
       perfis: perfisRetorno,
       cantoneiras: {
@@ -590,36 +588,14 @@ export default function ForroModularPage() {
       ? { largura: 0.625, comprimento: 0.625 }
       : { largura: 0.625, comprimento: 1.25 };
 
-    // 1. CÁLCULO OTIMIZADO DAS PLACAS (com aproveitamento)
+    // 1. CÁLCULO OTIMIZADO DAS PLACAS (usando sistema modular com aproveitamento do canto)
+    const tipoPlaca = ambienteReferencia.especificacoes.tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
     const totalPlacas = ambientes.reduce((total, amb) => {
       const largura = parseFloat(amb.largura);
       const comprimento = parseFloat(amb.comprimento);
       
-      // PLACAS INTEIRAS
-      const placasInteirasLargura = Math.floor(largura / placaDimensions.largura);
-      const placasInteirasComprimento = Math.floor(comprimento / placaDimensions.comprimento);
-      const placasInteiras = placasInteirasLargura * placasInteirasComprimento;
-      
-      // RECORTES E OTIMIZAÇÃO
-      let placasParaRecortes = 0;
-      
-      // Recorte na largura
-      const recorteLargura = largura - (placasInteirasLargura * placaDimensions.largura);
-      if (recorteLargura > 0) {
-        const recortesPorPlacaLargura = Math.floor(placaDimensions.largura / recorteLargura);
-        const totalRecortesLargura = Math.ceil(comprimento / placaDimensions.comprimento);
-        placasParaRecortes += Math.ceil(totalRecortesLargura / recortesPorPlacaLargura);
-      }
-      
-      // Recorte no comprimento
-      const recorteComprimento = comprimento - (placasInteirasComprimento * placaDimensions.comprimento);
-      if (recorteComprimento > 0) {
-        const recortesPorPlacaComprimento = Math.floor(placaDimensions.comprimento / recorteComprimento);
-        const totalRecortesComprimento = Math.ceil(largura / placaDimensions.largura);
-        placasParaRecortes += Math.ceil(totalRecortesComprimento / recortesPorPlacaComprimento);
-      }
-      
-      return total + placasInteiras + placasParaRecortes;
+      const resultadoPlacas = calcularPlacas(largura, comprimento, tipoPlaca);
+      return total + resultadoPlacas.totalPlacas;
     }, 0);
 
     // Usar médias para os demais cálculos (simplificado)
@@ -1286,31 +1262,61 @@ export default function ForroModularPage() {
                                           Placas Modulares
                                         </h6>
                                         <div className="space-y-1 text-xs">
-                                          {analise.placas.inteiras > 0 && (
-                                            <div className="text-xs">
-                                              <span>{analise.placas.inteiras} placas - sem corte</span>
-                                            </div>
-                                          )}
-                                          {analise.placas.recortesLargura > 0 && (
-                                            <div className="text-xs">
-                                              <span>{analise.placas.recortesLargura} placas - cortar peças com tamanho {analise.placas.tamanhoRecorteLargura.toFixed(2)}m (largura)</span>
-                                            </div>
-                                          )}
-                                          {analise.placas.recortesComprimento > 0 && (
-                                            <div className="text-xs">
-                                              <span>{analise.placas.recortesComprimento} placas - cortar peças com tamanho {analise.placas.tamanhoRecorteComprimento.toFixed(2)}m (comprimento)</span>
-                                            </div>
-                                          )}
-                                          <hr className="border-blue-200" />
-                                          <div className="flex justify-between font-semibold">
-                                            <span>Total:</span>
-                                            <span>{analise.placas.total} placas</span>
-                                          </div>
-                                          {analise.placas.economia > 0 && (
-                                            <div className="text-green-700 text-xs">
-                                              💡 Economia: {analise.placas.economia} placas
-                                            </div>
-                                          )}
+                                          {(() => {
+                                            const tipoPlacaCalculadora = tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
+                                            const resultadoDetalhado = calcularPlacas(parseFloat(ambiente.largura), parseFloat(ambiente.comprimento), tipoPlacaCalculadora);
+                                            
+                                            return (
+                                              <>
+                                                {/* Placas inteiras */}
+                                                {resultadoDetalhado.detalhamento.placasInteiras > 0 && (
+                                                  <div className="text-xs">
+                                                    <span>{resultadoDetalhado.detalhamento.placasInteiras} placas - sem corte</span>
+                                                  </div>
+                                                )}
+                                                
+                                                {/* Recortes de largura */}
+                                                {resultadoDetalhado.recortes.largura && (
+                                                  <div className="text-xs">
+                                                    <span>
+                                                      {resultadoDetalhado.recortes.largura.detalhamentoAproveitamento?.placasNecessarias} placa - cortar {resultadoDetalhado.recortes.largura.detalhamentoAproveitamento?.totalPecas} peças de {resultadoDetalhado.recortes.largura.detalhamentoPecas?.[0].tamanho} - 
+                                                      <span className="text-red-600 font-medium"> sobra {resultadoDetalhado.recortes.largura.detalhamentoAproveitamento?.sobra.tamanho}</span>
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                
+                                                {/* Recortes de comprimento */}
+                                                {resultadoDetalhado.recortes.comprimento && (
+                                                  <div className="text-xs">
+                                                    <span>
+                                                      {resultadoDetalhado.recortes.comprimento.detalhamentoAproveitamento?.placasNecessarias} placa - cortar {resultadoDetalhado.recortes.comprimento.detalhamentoAproveitamento?.totalPecas} peças de {resultadoDetalhado.recortes.comprimento.detalhamentoPecas?.[0].tamanho} - 
+                                                      <span className="text-red-600 font-medium"> sobra {resultadoDetalhado.recortes.comprimento.detalhamentoAproveitamento?.sobra.tamanho}</span>
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                
+                                                
+                                                <hr className="border-blue-200" />
+                                                <div className="flex justify-between font-semibold">
+                                                  <span>Total:</span>
+                                                  <span>{resultadoDetalhado.totalPlacas} placas</span>
+                                                </div>
+                                                
+                                                {/* Observações */}
+                                                {resultadoDetalhado.observacoes.length > 0 && (
+                                                  <div className="mt-2 space-y-1">
+                                                    <hr className="border-blue-200" />
+                                                    <div className="text-xs text-blue-700">
+                                                      <div className="font-medium mb-1">🔧 Sistema Otimizado:</div>
+                                                      {resultadoDetalhado.observacoes.map((obs, idx) => (
+                                                        <div key={idx} className="text-xs">• {obs}</div>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </>
+                                            );
+                                          })()}
                                         </div>
                                       </div>
 

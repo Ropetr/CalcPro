@@ -59,6 +59,17 @@ export class BasePlacaCalculator {
       obs.push(`Sobra no comprimento (${recortes.comprimento.sobraPorPeca}) pode ser aproveitada`)
     }
 
+    // Informação sobre o canto
+    if (recortes.canto) {
+      if (recortes.canto.aproveitadoDaSobraLargura) {
+        obs.push(`Canto (${recortes.canto.tamanho}) aproveitado da sobra dos recortes de largura`)
+      } else if (recortes.canto.aproveitadoDaSobraComprimento) {
+        obs.push(`Canto (${recortes.canto.tamanho}) aproveitado da sobra dos recortes de comprimento`)
+      } else if (recortes.canto.precisaPlacaAdicional) {
+        obs.push(`Canto (${recortes.canto.tamanho}) precisa de 1 placa adicional`)
+      }
+    }
+
     // Verificar se há encaixe perfeito
     if (calculoLargura.fracao === 0) {
       obs.push("Encaixe perfeito na largura - sem recortes")
@@ -72,16 +83,21 @@ export class BasePlacaCalculator {
   }
 
   /**
-   * Cálculo principal de placas - implementação da lógica fornecida
+   * Cálculo principal de placas - implementação da lógica correta do usuário
    */
   calcular(larguraAmbiente: number, comprimentoAmbiente: number): ResultadoCalculoPlacas {
-    // Calcular largura e comprimento
+    // Calcular largura e comprimento usando a lógica do usuário
     const calculoLargura = this.calcularDimensao(larguraAmbiente, this.dimensoes.largura)
     const calculoComprimento = this.calcularDimensao(comprimentoAmbiente, this.dimensoes.comprimento)
 
-    // Total de placas necessárias
-    const totalPlacas = Math.ceil(calculoLargura.quantidade) * Math.ceil(calculoComprimento.quantidade)
+    // PLACAS INTEIRAS (sem recorte)
+    const placasInteiras = calculoLargura.inteiras * calculoComprimento.inteiras
 
+    // CÁLCULO DE PLACAS PARA RECORTES
+    let placasParaRecortesLargura = 0
+    let placasParaRecortesComprimento = 0
+    let placasParaCanto = 0
+    
     // Análise de recortes e aproveitamento
     const recortes: RecortesPlaca = {
       largura: null,
@@ -89,32 +105,79 @@ export class BasePlacaCalculator {
       canto: null
     }
 
-    // Se houver fração na largura
+    // 1. RECORTES NA LARGURA - calcular quantas placas físicas precisa
     if (calculoLargura.fracao > 0) {
+      const quantidadeRecortesLargura = calculoComprimento.inteiras
+      const recortesPorPlaca = Math.floor(this.dimensoes.largura / calculoLargura.pedacoNecessario)
+      placasParaRecortesLargura = Math.ceil(quantidadeRecortesLargura / recortesPorPlaca)
+      
+      // Detalhamento das peças necessárias
+      const detalhamentoPecas = [{
+        tamanho: `${calculoLargura.pedacoNecessario}m × ${this.dimensoes.comprimento}m`,
+        quantidade: quantidadeRecortesLargura
+      }]
+      
+      // Cálculo da sobra da placa
+      const sobraLargura = this.dimensoes.largura - (calculoLargura.pedacoNecessario * recortesPorPlaca)
+      const sobraTamanho = `${sobraLargura}m × ${this.dimensoes.comprimento}m`
+      
       recortes.largura = {
-        quantidade: Math.ceil(calculoComprimento.quantidade),
+        quantidade: placasParaRecortesLargura,
         tamanhoPorPeca: `${calculoLargura.pedacoNecessario}m × ${this.dimensoes.comprimento}m`,
-        sobraPorPeca: `${calculoLargura.sobra}m × ${this.dimensoes.comprimento}m`,
-        aproveitavel: calculoLargura.sobra >= 0.02 // Mínimo aproveitável
+        sobraPorPeca: sobraTamanho,
+        aproveitavel: sobraLargura >= 0.02,
+        detalhamentoPecas: detalhamentoPecas,
+        detalhamentoAproveitamento: {
+          placasNecessarias: placasParaRecortesLargura,
+          pecasPorPlaca: recortesPorPlaca,
+          totalPecas: quantidadeRecortesLargura,
+          sobra: {
+            tamanho: sobraTamanho,
+            aproveitavel: sobraLargura >= 0.02
+          }
+        }
       }
     }
 
-    // Se houver fração no comprimento
+    // 2. RECORTES NO COMPRIMENTO - calcular quantas placas físicas precisa
     if (calculoComprimento.fracao > 0) {
+      const quantidadeRecortesComprimento = calculoLargura.inteiras
+      const recortesPorPlaca = Math.floor(this.dimensoes.comprimento / calculoComprimento.pedacoNecessario)
+      placasParaRecortesComprimento = Math.ceil(quantidadeRecortesComprimento / recortesPorPlaca)
+      
+      // Detalhamento das peças necessárias
+      const detalhamentoPecas = [{
+        tamanho: `${this.dimensoes.largura}m × ${calculoComprimento.pedacoNecessario}m`,
+        quantidade: quantidadeRecortesComprimento
+      }]
+      
+      // Cálculo da sobra da placa
+      const sobraComprimento = this.dimensoes.comprimento - (calculoComprimento.pedacoNecessario * recortesPorPlaca)
+      const sobraTamanho = `${this.dimensoes.largura}m × ${sobraComprimento}m`
+      
       recortes.comprimento = {
-        quantidade: Math.ceil(calculoLargura.quantidade),
+        quantidade: placasParaRecortesComprimento,
         tamanhoPorPeca: `${this.dimensoes.largura}m × ${calculoComprimento.pedacoNecessario}m`,
-        sobraPorPeca: `${this.dimensoes.largura}m × ${calculoComprimento.sobra}m`,
-        aproveitavel: calculoComprimento.sobra >= 0.02
+        sobraPorPeca: sobraTamanho,
+        aproveitavel: sobraComprimento >= 0.02,
+        detalhamentoPecas: detalhamentoPecas,
+        detalhamentoAproveitamento: {
+          placasNecessarias: placasParaRecortesComprimento,
+          pecasPorPlaca: recortesPorPlaca,
+          totalPecas: quantidadeRecortesComprimento,
+          sobra: {
+            tamanho: sobraTamanho,
+            aproveitavel: sobraComprimento >= 0.02
+          }
+        }
       }
     }
 
-    // Canto (interseção dos recortes)
-    if (calculoLargura.fracao > 0 && calculoComprimento.fracao > 0) {
-      recortes.canto = {
-        tamanho: `${calculoLargura.pedacoNecessario}m × ${calculoComprimento.pedacoNecessario}m`
-      }
-    }
+    // 3. CANTO - removido da lógica conforme solicitado
+
+    // TOTAL DE PLACAS = inteiras + recortes largura + recortes comprimento + canto (se necessário)
+    const totalPlacas = placasInteiras + placasParaRecortesLargura + placasParaRecortesComprimento + placasParaCanto
+    const placasComRecorte = placasParaRecortesLargura + placasParaRecortesComprimento + placasParaCanto
 
     // Retornar resultado
     return {
@@ -131,8 +194,8 @@ export class BasePlacaCalculator {
       },
       totalPlacas: totalPlacas,
       detalhamento: {
-        placasInteiras: calculoLargura.inteiras * calculoComprimento.inteiras,
-        placasComRecorte: totalPlacas - (calculoLargura.inteiras * calculoComprimento.inteiras)
+        placasInteiras: placasInteiras,
+        placasComRecorte: placasComRecorte
       },
       recortes: recortes,
       observacoes: this.gerarObservacoes(calculoLargura, calculoComprimento, recortes)

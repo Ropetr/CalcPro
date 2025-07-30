@@ -24,7 +24,10 @@
       "Bash(npm run lint)",
       "Bash(pkill:*)",
       "Bash(node:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(npx tsx:*)",
+      "Bash(del \"src\\lib\\calculators\\forro-modular\\placas\\test-canto-otimizado.ts\")",
+      "Bash(del \"src\\lib\\calculators\\forro-modular\\placas\\test-validacao-final.ts\")"
     ],
     "deny": []
   }
