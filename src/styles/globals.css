@@ -31,52 +31,70 @@ body {
 
 @layer components {
   /* ========================================
-     SEÇÕES ISOLADAS - EVITAR CONFLITOS
+     3 CONTEXTOS ISOLADOS - ARQUITETURA CALCPRO
   ======================================== */
   
-  /* Landing Page / Marketing - estilos específicos */
-  .marketing-section {
-    /* Força estilos do banner sem afetar resto da app */
+  /* 1. SITE PÚBLICO - Landing Page/Marketing */
+  .site-section {
+    /* Site público - banners, páginas institucionais */
   }
   
-  .marketing-section h1,
-  .marketing-section h2,
-  .marketing-section h3,
-  .marketing-section p,
-  .marketing-section span {
-    /* Texto explicitamente branco para marketing */
-    color: white;
+  .site-section h1,
+  .site-section h2,
+  .site-section h3,
+  .site-section p,
+  .site-section span {
+    color: white; /* Banner com texto branco */
   }
   
-  /* Override para textos específicos no marketing */
-  .marketing-section .text-red-600 {
+  .site-section .text-red-600 {
     color: #dc2626 !important;
   }
   
-  .marketing-section .text-white {
+  .site-section .text-white {
     color: white !important;
   }
   
-  /* Dashboard / Área Logada - estilos específicos */  
-  .dashboard-section {
-    /* Força padrão da aplicação */
-    color: #374151;
+  /* 2. DASHBOARD CLIENTE - Área logada dos usuários */  
+  .client-dashboard {
+    color: #374151; /* Texto padrão escuro */
     background: white;
   }
   
-  .dashboard-section h1,
-  .dashboard-section h2,
-  .dashboard-section h3,
-  .dashboard-section h4,
-  .dashboard-section h5,
-  .dashboard-section h6 {
-    color: #111827; /* text-gray-900 */
+  .client-dashboard h1,
+  .client-dashboard h2,
+  .client-dashboard h3,
+  .client-dashboard h4,
+  .client-dashboard h5,
+  .client-dashboard h6 {
+    color: #111827; /* Títulos escuros */
   }
   
-  .dashboard-section p,
-  .dashboard-section span,
-  .dashboard-section div {
-    color: #374151; /* text-gray-700 */
+  .client-dashboard p,
+  .client-dashboard span,
+  .client-dashboard div {
+    color: #374151; /* Texto escuro legível */
+  }
+  
+  /* 3. ÁREA ADMINISTRATIVA - Admin CalcPro */
+  .admin-section {
+    color: #1f2937; /* Texto mais escuro para admin */
+    background: #f8fafc; /* Fundo levemente acinzentado */
+  }
+  
+  .admin-section h1,
+  .admin-section h2,
+  .admin-section h3,
+  .admin-section h4,
+  .admin-section h5,
+  .admin-section h6 {
+    color: #111827; /* Títulos bem escuros */
+  }
+  
+  .admin-section p,
+  .admin-section span,
+  .admin-section div {
+    color: #1f2937; /* Texto administrativo bem legível */
   }
 
   /* ========================================

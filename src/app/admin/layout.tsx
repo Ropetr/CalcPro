@@ -9,7 +9,7 @@ export default function AdminLayout({
 }) {
   return (
     <ProtectedRoute>
-    <div className="min-h-screen bg-gray-100">
+    <div className="admin-section min-h-screen bg-gray-100">
       <AdminHeader />
       <div className="flex">
         <AdminSidebar />
