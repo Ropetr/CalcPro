@@ -1437,7 +1437,7 @@ export default function ForroModularPage() {
                                             ]);
                                             
                                             // Extrair informações para exibição detalhada
-                                            const detalhes = cantoneiraResultado.cantoneira300.aproveitamento;
+                                            const detalhes = cantoneiraResultado.cantoneira300.detalhamento.aproveitamento;
                                             const totalCantoneiras = cantoneiraResultado.resumo.totalBarras300;
                                             
                                             // Separar inteiras e recortes para exibição
