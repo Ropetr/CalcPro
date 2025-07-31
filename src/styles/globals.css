@@ -174,36 +174,71 @@ body {
   
   /* Input para site/banner - estilo glass */
   .site-section .input-field {
-    @apply block w-full rounded-xl border-0 bg-white/10 backdrop-blur-sm text-white placeholder-white/60 shadow-lg;
+    display: block;
+    width: 100%;
+    border-radius: 0.75rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    color: white;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .site-section .input-field::placeholder {
+    color: rgba(255, 255, 255, 0.6);
   }
   
   .site-section .input-field:focus {
-    @apply outline-none ring-2;
-    ring-color: rgba(220, 38, 38, 0.5);
+    outline: none;
+    ring: 2px solid rgba(220, 38, 38, 0.5);
     border-color: rgba(220, 38, 38, 0.8);
     background: rgba(255, 255, 255, 0.15);
   }
 
   /* Input para dashboard cliente - estilo padrão */
   .client-dashboard .input-field {
-    @apply block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-500 px-3 py-2;
+    display: block;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #111827;
+    padding: 0.5rem 0.75rem;
     transition: all 0.3s ease;
   }
   
+  .client-dashboard .input-field::placeholder {
+    color: #6b7280;
+  }
+  
   .client-dashboard .input-field:focus {
-    @apply outline-none ring-2 ring-red-500 border-red-500;
+    outline: none;
+    ring: 2px solid #ef4444;
+    border-color: #ef4444;
   }
 
   /* Input para admin - estilo administrativo */
   .admin-section .input-field {
-    @apply block w-full rounded-lg border border-gray-400 bg-white text-gray-900 placeholder-gray-600 px-3 py-2;
+    display: block;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #9ca3af;
+    background: white;
+    color: #111827;
+    padding: 0.5rem 0.75rem;
     transition: all 0.3s ease;
   }
   
+  .admin-section .input-field::placeholder {
+    color: #6b7280;
+  }
+  
   .admin-section .input-field:focus {
-    @apply outline-none ring-2 ring-blue-500 border-blue-500;
+    outline: none;
+    ring: 2px solid #3b82f6;
+    border-color: #3b82f6;
   }
   
   .glass-card {
