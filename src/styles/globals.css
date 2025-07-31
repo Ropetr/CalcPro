@@ -172,17 +172,38 @@ body {
     background: var(--vitral-primary);
   }
   
-  .input-field {
+  /* Input para site/banner - estilo glass */
+  .site-section .input-field {
     @apply block w-full rounded-xl border-0 bg-white/10 backdrop-blur-sm text-white placeholder-white/60 shadow-lg;
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
   }
   
-  .input-field:focus {
+  .site-section .input-field:focus {
     @apply outline-none ring-2;
     ring-color: rgba(220, 38, 38, 0.5);
     border-color: rgba(220, 38, 38, 0.8);
     background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Input para dashboard cliente - estilo padrão */
+  .client-dashboard .input-field {
+    @apply block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-500 px-3 py-2;
+    transition: all 0.3s ease;
+  }
+  
+  .client-dashboard .input-field:focus {
+    @apply outline-none ring-2 ring-red-500 border-red-500;
+  }
+
+  /* Input para admin - estilo administrativo */
+  .admin-section .input-field {
+    @apply block w-full rounded-lg border border-gray-400 bg-white text-gray-900 placeholder-gray-600 px-3 py-2;
+    transition: all 0.3s ease;
+  }
+  
+  .admin-section .input-field:focus {
+    @apply outline-none ring-2 ring-blue-500 border-blue-500;
   }
   
   .glass-card {
