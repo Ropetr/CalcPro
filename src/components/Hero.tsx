@@ -3,7 +3,7 @@ import { ArrowRight, CheckCircle } from 'lucide-react'
 
 export default function Hero() {
   return (
-    <section className="relative py-24 overflow-hidden -mt-20">
+    <section className="marketing-section relative py-24 overflow-hidden -mt-20">
       
       {/* Background Image - Planta Baixa */}
       <div 

@@ -37,7 +37,7 @@ export default function DashboardLayout({
 
   return (
     <ProtectedRoute>
-    <div className="min-h-screen bg-gray-50">
+    <div className="dashboard-section min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="flex items-center justify-between px-6 py-4">
