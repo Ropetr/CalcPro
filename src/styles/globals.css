@@ -61,19 +61,21 @@ body {
     background: white;
   }
   
-  .client-dashboard h1,
-  .client-dashboard h2,
-  .client-dashboard h3,
-  .client-dashboard h4,
-  .client-dashboard h5,
-  .client-dashboard h6 {
-    color: #111827; /* Títulos escuros */
+  /* Headers padrão - mas não afeta classes específicas de cor */
+  .client-dashboard h1:not([class*="text-"]),
+  .client-dashboard h2:not([class*="text-"]),
+  .client-dashboard h3:not([class*="text-"]),
+  .client-dashboard h4:not([class*="text-"]),
+  .client-dashboard h5:not([class*="text-"]),
+  .client-dashboard h6:not([class*="text-"]) {
+    color: #111827; /* Títulos escuros apenas se não tem classe text- */
   }
   
-  .client-dashboard p,
-  .client-dashboard span,
-  .client-dashboard div {
-    color: #374151; /* Texto escuro legível */
+  /* Textos padrão - mas não afeta classes específicas de cor */
+  .client-dashboard p:not([class*="text-"]),
+  .client-dashboard span:not([class*="text-"]),
+  .client-dashboard div:not([class*="text-"]) {
+    color: #374151; /* Texto escuro apenas se não tem classe text- */
   }
   
   /* 3. ÁREA ADMINISTRATIVA - Admin CalcPro */
@@ -239,6 +241,28 @@ body {
     outline: none;
     ring: 2px solid #3b82f6;
     border-color: #3b82f6;
+  }
+
+  /* Input padrão global para páginas sem contexto (login, registro) */
+  .input-field {
+    display: block;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #111827;
+    padding: 0.5rem 0.75rem;
+    transition: all 0.3s ease;
+  }
+  
+  .input-field::placeholder {
+    color: #6b7280;
+  }
+  
+  .input-field:focus {
+    outline: none;
+    border-color: #ef4444;
+    ring: 2px solid rgba(239, 68, 68, 0.2);
   }
   
   .glass-card {
