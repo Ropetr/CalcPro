@@ -1257,10 +1257,6 @@ export default function ForroModularPage() {
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                       {/* Placas */}
                                       <div className="p-3 bg-blue-50 rounded-lg">
-                                        <h6 className="font-medium text-blue-900 mb-2 flex items-center text-sm">
-                                          <Grid3X3 className="h-4 w-4 mr-2" />
-                                          Placas Modulares
-                                        </h6>
                                         <div className="space-y-1 text-xs">
                                           {(() => {
                                             const tipoPlacaCalculadora = tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
@@ -1268,6 +1264,15 @@ export default function ForroModularPage() {
                                             
                                             return (
                                               <>
+                                                {/* Cabeçalho com total */}
+                                                <h6 className="font-medium text-blue-900 mb-2 flex items-center justify-between text-sm -mt-1">
+                                                  <div className="flex items-center">
+                                                    <Grid3X3 className="h-4 w-4 mr-2" />
+                                                    Placas
+                                                  </div>
+                                                  <span className="font-medium text-blue-900">{resultadoDetalhado.totalPlacas} un</span>
+                                                </h6>
+                                                <hr className="border-blue-200 mb-2" />
                                                 {/* Placas inteiras */}
                                                 {resultadoDetalhado.detalhamento.placasInteiras > 0 && (
                                                   <div className="text-xs">
@@ -1295,43 +1300,51 @@ export default function ForroModularPage() {
                                                   </div>
                                                 )}
                                                 
-                                                
-                                                <hr className="border-blue-200" />
-                                                <div className="flex justify-between font-semibold">
-                                                  <span>Total:</span>
-                                                  <span>{resultadoDetalhado.totalPlacas} placas</span>
-                                                </div>
-                                                
-                                                {/* Observações */}
-                                                {resultadoDetalhado.observacoes.length > 0 && (
-                                                  <div className="mt-2 space-y-1">
-                                                    <hr className="border-blue-200" />
-                                                    <div className="text-xs text-blue-700">
-                                                      <div className="font-medium mb-1">🔧 Sistema Otimizado:</div>
-                                                      {resultadoDetalhado.observacoes.map((obs, idx) => (
-                                                        <div key={idx} className="text-xs">• {obs}</div>
-                                                      ))}
-                                                    </div>
+                                                {/* Placa do canto */}
+                                                {resultadoDetalhado.recortes.canto?.precisaPlacaAdicional && resultadoDetalhado.recortes.canto.detalhamentoPlacaAdicional && (
+                                                  <div className="text-xs">
+                                                    <span>
+                                                      {resultadoDetalhado.recortes.canto.detalhamentoPlacaAdicional.placasNecessarias} placa - cortar 1 peça de {resultadoDetalhado.recortes.canto.detalhamentoPlacaAdicional.tamanhoCorte} (canto) - 
+                                                      <span className="text-red-600 font-medium"> sobra {resultadoDetalhado.recortes.canto.detalhamentoPlacaAdicional.sobra1} + {resultadoDetalhado.recortes.canto.detalhamentoPlacaAdicional.sobra2}</span>
+                                                    </span>
                                                   </div>
                                                 )}
+                                                
+                                                {/* Status do canto quando aproveitado */}
+                                                {resultadoDetalhado.recortes.canto && !resultadoDetalhado.recortes.canto.precisaPlacaAdicional && (
+                                                  <div className="text-xs">
+                                                    <span>
+                                                      Canto ({resultadoDetalhado.recortes.canto.tamanho}): 
+                                                      {resultadoDetalhado.recortes.canto.aproveitadoDaSobraLargura && (
+                                                        <span className="text-green-600 font-medium"> aproveitado da sobra de largura</span>
+                                                      )}
+                                                      {resultadoDetalhado.recortes.canto.aproveitadoDaSobraComprimento && (
+                                                        <span className="text-green-600 font-medium"> aproveitado da sobra de comprimento</span>
+                                                      )}
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                
+                                                
                                               </>
                                             );
                                           })()}
                                         </div>
                                       </div>
 
-                                      {/* Perfis T */}
-                                      <div className="p-3 bg-orange-50 rounded-lg">
-                                        <h6 className="font-medium text-orange-900 mb-2 flex items-center text-sm">
-                                          <Ruler className="h-4 w-4 mr-2" />
-                                          Perfis T
-                                        </h6>
-                                        <div className="space-y-2 text-xs">
-                                          <div>
-                                            <div className="flex justify-between mb-1">
-                                              <span>Perfil T 3,12m:</span>
-                                              <span className="font-medium">{analise.perfis.t312.total} un</span>
+                                      {/* Perfis T - Dividido em 2 boxes */}
+                                      <div className="space-y-3">
+                                        {/* Perfil T 3,12m */}
+                                        <div className="p-3 bg-orange-50 rounded-lg">
+                                          <h6 className="font-medium text-orange-900 mb-2 flex items-center justify-between text-sm">
+                                            <div className="flex items-center">
+                                              <Ruler className="h-4 w-4 mr-2" />
+                                              Perfil T 3,12m
                                             </div>
+                                            <span className="font-medium text-orange-900">{analise.perfis.t312.total} un</span>
+                                          </h6>
+                                          <hr className="border-orange-200 mb-2" />
+                                          <div className="text-xs">
                                             {analise.perfis.t312.detalhes && (
                                               <div className="text-xs text-orange-700 pl-3 space-y-1">
                                                 <div>• Inteiras: {analise.perfis.t312.detalhes.completos}</div>
@@ -1342,12 +1355,19 @@ export default function ForroModularPage() {
                                               </div>
                                             )}
                                           </div>
-                                          
-                                          <div>
-                                            <div className="flex justify-between mb-1">
-                                              <span>Perfil T 1,25m:</span>
-                                              <span className="font-medium">{analise.perfis.t125.total} un</span>
+                                        </div>
+
+                                        {/* Perfil T 1,25m */}
+                                        <div className="p-3 bg-orange-50 rounded-lg">
+                                          <h6 className="font-medium text-orange-900 mb-2 flex items-center justify-between text-sm">
+                                            <div className="flex items-center">
+                                              <Ruler className="h-4 w-4 mr-2" />
+                                              Perfil T 1,25m
                                             </div>
+                                            <span className="font-medium text-orange-900">{analise.perfis.t125.total} un</span>
+                                          </h6>
+                                          <hr className="border-orange-200 mb-2" />
+                                          <div className="text-xs">
                                             {analise.perfis.t125.detalhes && (
                                               <div className="text-xs text-orange-700 pl-3 space-y-1">
                                                 <div>• Inteiras: {analise.perfis.t125.detalhes.completos}</div>
@@ -1358,13 +1378,20 @@ export default function ForroModularPage() {
                                               </div>
                                             )}
                                           </div>
-                                          
-                                          {analise.perfis.t0625 && (
-                                            <div>
-                                              <div className="flex justify-between mb-1">
-                                                <span>Perfil T 0,625m:</span>
-                                                <span className="font-medium">{analise.perfis.t0625.total} un</span>
+                                        </div>
+
+                                        {/* Perfil T 0,625m - Se existir */}
+                                        {analise.perfis.t0625 && (
+                                          <div className="p-3 bg-orange-50 rounded-lg">
+                                            <h6 className="font-medium text-orange-900 mb-2 flex items-center justify-between text-sm">
+                                              <div className="flex items-center">
+                                                <Ruler className="h-4 w-4 mr-2" />
+                                                Perfil T 0,625m
                                               </div>
+                                              <span className="font-medium text-orange-900">{analise.perfis.t0625.total} un</span>
+                                            </h6>
+                                            <hr className="border-orange-200 mb-2" />
+                                            <div className="text-xs">
                                               {analise.perfis.t0625.detalhes && (
                                                 <div className="text-xs text-orange-700 pl-3 space-y-1">
                                                   <div>• Horizontais: {analise.perfis.t0625.detalhes.horizontais}</div>
@@ -1378,47 +1405,95 @@ export default function ForroModularPage() {
                                                 </div>
                                               )}
                                             </div>
-                                          )}
-                                        </div>
+                                          </div>
+                                        )}
                                       </div>
 
                                       {/* Cantoneiras */}
                                       <div className="p-3 bg-green-50 rounded-lg">
-                                        <h6 className="font-medium text-green-900 mb-2 flex items-center text-sm">
-                                          <Package className="h-4 w-4 mr-2" />
-                                          Cantoneiras (por parede)
+                                        <h6 className="font-medium text-green-900 mb-2 flex items-center justify-between text-sm">
+                                          <div className="flex items-center">
+                                            <Package className="h-4 w-4 mr-2" />
+                                            Cantoneiras
+                                          </div>
+                                          <span className="font-medium text-green-900">{(() => {
+                                            const largura = parseFloat(ambiente.largura) || 0;
+                                            const comprimento = parseFloat(ambiente.comprimento) || 0;
+                                            const cantoneiraResultado = calcularCantoneirasMultiplosAmbientes([
+                                              { largura, comprimento, nome: ambiente.nome }
+                                            ]);
+                                            return cantoneiraResultado.resumo.totalBarras300;
+                                          })()} un</span>
                                         </h6>
+                                        <hr className="border-green-200 mb-2" />
                                         <div className="space-y-1 text-xs">
-                                          <div className="flex justify-between font-semibold">
-                                            <span>Total:</span>
-                                            <span className="text-green-700">{analise.cantoneiras.total} un</span>
-                                          </div>
-                                          <hr className="border-green-200" />
-                                          <div className="space-y-1">
-                                            <div className="text-xs text-green-700">
-                                              <div>• Inteiras: {analise.cantoneiras.inteiras} cantoneiras</div>
-                                              <div>• Para recortes: {analise.cantoneiras.recortes} cantoneiras</div>
-                                              
-                                              {analise.cantoneiras.aproveitamento && analise.cantoneiras.aproveitamento.length > 0 && (
-                                                <div className="mt-2">
-                                                  <div className="font-medium mb-1">Plano de corte:</div>
-                                                  <div className="pl-2 space-y-1">
-                                                    {analise.cantoneiras.aproveitamento.map((barra, idx) => (
-                                                      <div key={idx} className="text-xs">
-                                                        <div>Barra {barra.barra}: {barra.uso1.medida}m</div>
-                                                        {barra.uso2 && (
-                                                          <div className="pl-4">+ {barra.uso2.medida}m</div>
-                                                        )}
-                                                        {barra.sobra && barra.sobra > 0.01 && (
-                                                          <div className="pl-4 text-gray-600">Sobra: {barra.sobra.toFixed(2)}m</div>
-                                                        )}
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
+                                          {(() => {
+                                            const largura = parseFloat(ambiente.largura) || 0;
+                                            const comprimento = parseFloat(ambiente.comprimento) || 0;
+                                            
+                                            // Usar lógica otimizada da calculadora principal
+                                            const cantoneiraResultado = calcularCantoneirasMultiplosAmbientes([
+                                              { largura, comprimento, nome: ambiente.nome }
+                                            ]);
+                                            
+                                            // Extrair informações para exibição detalhada
+                                            const detalhes = cantoneiraResultado.cantoneira300.aproveitamento;
+                                            const totalCantoneiras = cantoneiraResultado.resumo.totalBarras300;
+                                            
+                                            // Separar inteiras e recortes para exibição
+                                            const larguraInteiras = Math.floor(largura / 3.0);
+                                            const larguraRecorte = largura % 3.0;
+                                            const larguraTotal = larguraInteiras * 2; // 2 paredes de largura
+                                            
+                                            const comprimentoInteiras = Math.floor(comprimento / 3.0);
+                                            const comprimentoRecorte = comprimento % 3.0;
+                                            const comprimentoTotal = comprimentoInteiras * 2; // 2 paredes de comprimento
+                                            
+                                            // Criar itens baseados na lógica otimizada
+                                            const itens = [];
+                                            
+                                            // Adicionar cantoneiras inteiras
+                                            if (larguraTotal > 0) {
+                                              itens.push({
+                                                texto: `${larguraTotal} UN - Inteiras na parede ${largura.toFixed(2)}m`,
+                                                aproveitamento: 3.0
+                                              });
+                                            }
+                                            if (comprimentoTotal > 0) {
+                                              itens.push({
+                                                texto: `${comprimentoTotal} UN - Inteiras na parede ${comprimento.toFixed(2)}m`,
+                                                aproveitamento: 3.0
+                                              });
+                                            }
+                                            
+                                            // Adicionar recortes baseados na otimização real
+                                            (detalhes || []).forEach((detalhe, index) => {
+                                              if (detalhe.uso2) {
+                                                // Dois usos na mesma barra
+                                                itens.push({
+                                                  texto: `1 UN - ${detalhe.uso1.medida.toFixed(2)}m + ${detalhe.uso2.medida.toFixed(2)}m (sobra ${detalhe.sobra?.toFixed(2) || 0}m)`,
+                                                  aproveitamento: Math.max(detalhe.uso1.medida, detalhe.uso2.medida)
+                                                });
+                                              } else {
+                                                // Um uso apenas
+                                                itens.push({
+                                                  texto: `1 UN - ${detalhe.uso1.medida.toFixed(2)}m (sobra ${(3.0 - detalhe.uso1.medida).toFixed(2)}m)`,
+                                                  aproveitamento: detalhe.uso1.medida
+                                                });
+                                              }
+                                            });
+                                            
+                                            // Ordenar por aproveitamento
+                                            itens.sort((a, b) => b.aproveitamento - a.aproveitamento);
+                                            
+                                            return (
+                                              <div className="space-y-1 text-green-700">
+                                                {itens.map((item, idx) => (
+                                                  <div key={idx}>{item.texto}</div>
+                                                ))}
+                                              </div>
+                                            );
+                                          })()}
                                         </div>
                                       </div>
                                     </div>

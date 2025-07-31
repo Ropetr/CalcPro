@@ -173,7 +173,70 @@ export class BasePlacaCalculator {
       }
     }
 
-    // 3. CANTO - removido da lógica conforme solicitado
+    // 3. CANTO - análise final para verificar se sobras conseguem cobrir
+    if (calculoLargura.fracao > 0 && calculoComprimento.fracao > 0) {
+      const cantoLargura = calculoLargura.pedacoNecessario
+      const cantoComprimento = calculoComprimento.pedacoNecessario
+      
+      let aproveitadoDaSobraLargura = false
+      let aproveitadoDaSobraComprimento = false
+      let precisaPlacaAdicional = true
+      
+      // 1º Verificar se sobra da largura consegue cobrir o canto
+      if (recortes.largura?.detalhamentoAproveitamento?.sobra.aproveitavel) {
+        const sobraLarguraDimensoes = recortes.largura.detalhamentoAproveitamento.sobra.tamanho.split(' × ')
+        const sobraL = parseFloat(sobraLarguraDimensoes[0].replace('m', ''))
+        const sobraC = parseFloat(sobraLarguraDimensoes[1].replace('m', ''))
+        
+        // Verificar se consegue fazer o canto (considerando rotação)
+        if ((sobraL >= cantoLargura && sobraC >= cantoComprimento) || 
+            (sobraL >= cantoComprimento && sobraC >= cantoLargura)) {
+          aproveitadoDaSobraLargura = true
+          precisaPlacaAdicional = false
+        }
+      }
+      
+      // 2º Se não deu na largura, verificar sobra do comprimento
+      if (!aproveitadoDaSobraLargura && recortes.comprimento?.detalhamentoAproveitamento?.sobra.aproveitavel) {
+        const sobraComprimentoDimensoes = recortes.comprimento.detalhamentoAproveitamento.sobra.tamanho.split(' × ')
+        const sobraL = parseFloat(sobraComprimentoDimensoes[0].replace('m', ''))
+        const sobraC = parseFloat(sobraComprimentoDimensoes[1].replace('m', ''))
+        
+        // Verificar se consegue fazer o canto (considerando rotação)
+        if ((sobraL >= cantoLargura && sobraC >= cantoComprimento) || 
+            (sobraL >= cantoComprimento && sobraC >= cantoLargura)) {
+          aproveitadoDaSobraComprimento = true
+          precisaPlacaAdicional = false
+        }
+      }
+      
+      // 3º Se nenhuma sobra consegue, precisa de placa adicional
+      let detalhamentoPlacaAdicional = undefined
+      if (precisaPlacaAdicional) {
+        // Processo: cortar largura inteira (0,625m) × comprimento necessário (0,20m)
+        const sobra1Largura = this.dimensoes.largura
+        const sobra1Comprimento = this.dimensoes.comprimento - cantoComprimento
+        
+        const sobra2Largura = this.dimensoes.largura - cantoLargura
+        const sobra2Comprimento = cantoComprimento
+        
+        detalhamentoPlacaAdicional = {
+          placasNecessarias: 1,
+          tamanhoCorte: `${cantoLargura}m × ${cantoComprimento}m`,
+          sobra1: `${sobra1Largura}m × ${Math.round(sobra1Comprimento * 100) / 100}m`,
+          sobra2: `${sobra2Largura}m × ${sobra2Comprimento}m`
+        }
+        placasParaCanto = 1
+      }
+      
+      recortes.canto = {
+        tamanho: `${cantoLargura}m × ${cantoComprimento}m`,
+        aproveitadoDaSobraLargura,
+        aproveitadoDaSobraComprimento,
+        precisaPlacaAdicional,
+        detalhamentoPlacaAdicional
+      }
+    }
 
     // TOTAL DE PLACAS = inteiras + recortes largura + recortes comprimento + canto (se necessário)
     const totalPlacas = placasInteiras + placasParaRecortesLargura + placasParaRecortesComprimento + placasParaCanto

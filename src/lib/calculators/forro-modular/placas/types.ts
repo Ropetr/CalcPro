@@ -44,7 +44,8 @@ export interface RecortesPlaca {
     detalhamentoPlacaAdicional?: {
       placasNecessarias: number
       tamanhoCorte: string
-      sobra: string
+      sobra1: string  // Sobra da placa original
+      sobra2: string  // Sobra da faixa cortada
     }
   } | null
 }
