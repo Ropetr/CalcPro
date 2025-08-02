@@ -20,6 +20,8 @@ import {
   CheckCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import { DrywallCalculator, type MedidaParede as MedidaParedeType, type ResultadoCalculoDrywall } from '@/lib/calculators/divisoria-drywall'
+import DrywallDrawing from '@/components/DrywallDrawing'
 
 interface Medida {
   id: string
@@ -29,14 +31,23 @@ interface Medida {
   descricao: string
   area: number
   especificacoes: {
-    tipoMontante: string
-    chapasPorLado: string
+    tipoChapa: '1.80' | '2.40'
+    tipoMontante: '48' | '70' | '90'
+    chapasPorLado: 'simples' | 'duplo' | 'quadruplo'
     incluirIsolamento: boolean
     preenchido: boolean
   }
   vaos: {
-    portas: string
-    janelas: string
+    porta: {
+      tipo: 'nenhuma' | 'comum' | 'passagem'
+      largura: string
+      altura: string
+    }
+    janelas: {
+      quantidade: string
+      largura: string
+      altura: string
+    }
     preenchido: boolean
   }
 }
@@ -47,10 +58,13 @@ export default function DivisoriaDrywallPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [modalAberto, setModalAberto] = useState<{tipo: 'especificacoes' | 'vaos' | null, medidaId: string | null}>({tipo: null, medidaId: null})
   const [especificacoesPadrao, setEspecificacoesPadrao] = useState<{
-    tipoMontante: string
-    chapasPorLado: string
+    tipoChapa: '1.80' | '2.40'
+    tipoMontante: '48' | '70' | '90'
+    chapasPorLado: 'simples' | 'duplo' | 'quadruplo'
     incluirIsolamento: boolean
   } | null>(null)
+  const [resultadoCalculo, setResultadoCalculo] = useState<ResultadoCalculoDrywall | null>(null)
+  const [calculadora] = useState(new DrywallCalculator())
   const [medidas, setMedidas] = useState<Medida[]>([
     {
       id: '1',
@@ -60,14 +74,23 @@ export default function DivisoriaDrywallPage() {
       descricao: '',
       area: 0,
       especificacoes: {
-        tipoMontante: '48',
-        chapasPorLado: '1',
+        tipoChapa: '1.80' as const,
+        tipoMontante: '48' as const,
+        chapasPorLado: 'simples' as const,
         incluirIsolamento: false,
         preenchido: false
       },
       vaos: {
-        portas: '',
-        janelas: '',
+        porta: {
+          tipo: 'nenhuma' as const,
+          largura: '0.80',
+          altura: '2.10'
+        },
+        janelas: {
+          quantidade: '0',
+          largura: '1.20',
+          altura: '1.05'
+        },
         preenchido: false
       }
     }
@@ -113,8 +136,53 @@ export default function DivisoriaDrywallPage() {
   }, [medidas])
 
   const calcularMateriais = () => {
-    // Função para calcular materiais
-    console.log('Calculando materiais...')
+    try {
+      // Converter medidas para o formato esperado pela calculadora
+      const paredesParaCalculo: MedidaParedeType[] = medidas
+        .filter(medida => parseFloat(medida.altura) > 0 && parseFloat(medida.largura) > 0)
+        .map(medida => ({
+          id: medida.id,
+          nome: medida.nome,
+          altura: parseFloat(medida.altura),
+          largura: parseFloat(medida.largura),
+          descricao: medida.descricao,
+          area: parseFloat(medida.altura) * parseFloat(medida.largura),
+          especificacoes: {
+            tipoChapa: medida.especificacoes.tipoChapa,
+            tipoMontante: medida.especificacoes.tipoMontante,
+            chapasPorLado: medida.especificacoes.chapasPorLado,
+            incluirIsolamento: medida.especificacoes.incluirIsolamento,
+            preenchido: medida.especificacoes.preenchido
+          },
+          vaos: {
+            porta: {
+              tipo: medida.vaos.porta.tipo,
+              largura: medida.vaos.porta.tipo !== 'nenhuma' ? parseFloat(medida.vaos.porta.largura) : undefined,
+              altura: medida.vaos.porta.tipo !== 'nenhuma' ? parseFloat(medida.vaos.porta.altura) : undefined
+            },
+            janelas: {
+              quantidade: parseInt(medida.vaos.janelas.quantidade) || 0,
+              largura: parseFloat(medida.vaos.janelas.largura) || 1.20,
+              altura: parseFloat(medida.vaos.janelas.altura) || 1.05
+            },
+            preenchido: medida.vaos.preenchido
+          }
+        }))
+      
+      if (paredesParaCalculo.length === 0) {
+        alert('Adicione pelo menos uma medida válida para calcular')
+        return
+      }
+      
+      const resultado = calculadora.calcular(paredesParaCalculo, modalidade)
+      setResultadoCalculo(resultado)
+      setActiveTab('materiais')
+      
+      console.log('Cálculo realizado com sucesso:', resultado)
+    } catch (error) {
+      console.error('Erro ao calcular materiais:', error)
+      alert('Erro ao calcular materiais. Verifique os dados inseridos.')
+    }
   }
 
   const adicionarMedida = () => {
@@ -127,19 +195,29 @@ export default function DivisoriaDrywallPage() {
       descricao: '',
       area: 0,
       especificacoes: especificacoesPadrao ? {
+        tipoChapa: especificacoesPadrao.tipoChapa,
         tipoMontante: especificacoesPadrao.tipoMontante,
         chapasPorLado: especificacoesPadrao.chapasPorLado,
         incluirIsolamento: especificacoesPadrao.incluirIsolamento,
         preenchido: true // Já vem preenchida com o padrão
       } : {
-        tipoMontante: '48',
-        chapasPorLado: '1',
+        tipoChapa: '1.80' as const,
+        tipoMontante: '48' as const,
+        chapasPorLado: 'simples' as const,
         incluirIsolamento: false,
         preenchido: false
       },
       vaos: {
-        portas: '',
-        janelas: '',
+        porta: {
+          tipo: 'nenhuma' as const,
+          largura: '0.80',
+          altura: '2.10'
+        },
+        janelas: {
+          quantidade: '0',
+          largura: '1.20',
+          altura: '1.05'
+        },
         preenchido: false
       }
     }
@@ -196,6 +274,7 @@ export default function DivisoriaDrywallPage() {
 
     // Verificar se é igual ao padrão
     const igualPadrao = 
+      medida.especificacoes.tipoChapa === especificacoesPadrao.tipoChapa &&
       medida.especificacoes.tipoMontante === especificacoesPadrao.tipoMontante &&
       medida.especificacoes.chapasPorLado === especificacoesPadrao.chapasPorLado &&
       medida.especificacoes.incluirIsolamento === especificacoesPadrao.incluirIsolamento
@@ -213,8 +292,8 @@ export default function DivisoriaDrywallPage() {
     }
 
     // Verificar se tem informações preenchidas
-    const temInformacoes = medida.vaos.portas && medida.vaos.portas !== '0' || 
-                          medida.vaos.janelas && medida.vaos.janelas !== '0'
+    const temInformacoes = medida.vaos.porta.tipo !== 'nenhuma' || 
+                          (medida.vaos.janelas.quantidade && medida.vaos.janelas.quantidade !== '0')
 
     // Se tem vãos = verde, se não tem vãos = continua vermelha (sem dados)
     return temInformacoes 
@@ -430,7 +509,8 @@ export default function DivisoriaDrywallPage() {
                                     ? "🔴 Especificações - Não configurada"
                                     : !especificacoesPadrao 
                                       ? "🟢 Especificações - Configurada"
-                                      : medida.especificacoes.tipoMontante === especificacoesPadrao.tipoMontante &&
+                                      : medida.especificacoes.tipoChapa === especificacoesPadrao.tipoChapa &&
+                                        medida.especificacoes.tipoMontante === especificacoesPadrao.tipoMontante &&
                                         medida.especificacoes.chapasPorLado === especificacoesPadrao.chapasPorLado &&
                                         medida.especificacoes.incluirIsolamento === especificacoesPadrao.incluirIsolamento
                                         ? "🟢 Especificações - Padrão do projeto"
@@ -445,7 +525,7 @@ export default function DivisoriaDrywallPage() {
                                 title={
                                   !medida.vaos.preenchido 
                                     ? "🔴 Vãos e Aberturas - Não configurada"
-                                    : (medida.vaos.portas && medida.vaos.portas !== '0') || (medida.vaos.janelas && medida.vaos.janelas !== '0')
+                                    : medida.vaos.porta.tipo !== 'nenhuma' || (medida.vaos.janelas.quantidade && medida.vaos.janelas.quantidade !== '0')
                                       ? "🟢 Vãos e Aberturas - Tem vãos"
                                       : "🔴 Vãos e Aberturas - Sem dados"
                                 }
@@ -524,25 +604,182 @@ export default function DivisoriaDrywallPage() {
                 )}
 
                 {activeTab === 'desenho' && (
-                  <div className="h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                      <div className="text-gray-600">Desenho técnico será gerado após o cálculo</div>
-                      <div className="text-sm text-gray-500">Inclui plano de corte e manual de montagem</div>
-                      <div className="text-xs text-gray-500 mt-2">
-                        Total: {areaTotal.toFixed(2)} m² ({medidas.length} medida{medidas.length !== 1 ? 's' : ''})
+                  <div className="space-y-4">
+                    {!resultadoCalculo ? (
+                      <div className="h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                          <div className="text-gray-600">Desenho técnico será gerado após o cálculo</div>
+                          <div className="text-sm text-gray-500">Inclui plano de corte e manual de montagem</div>
+                          <div className="text-xs text-gray-500 mt-2">
+                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} medida{medidas.length !== 1 ? 's' : ''})
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Desenhos Técnicos das Paredes */}
+                        <div className="space-y-6">
+                          {resultadoCalculo.paredes.map((parede, index) => (
+                            <DrywallDrawing key={parede.id} parede={parede} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeTab === 'materiais' && (
                   <div className="space-y-6">
-                    <div className="text-center text-gray-500 py-8">
-                      <Calculator className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                      <div>Execute o cálculo para ver a lista detalhada de materiais</div>
-                      <div className="text-sm mt-1">Inclui chapas, perfis, parafusos, massa e fita</div>
-                    </div>
+                    {!resultadoCalculo ? (
+                      <div className="text-center text-gray-500 py-8">
+                        <Calculator className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                        <div>Execute o cálculo para ver a lista detalhada de materiais</div>
+                        <div className="text-sm mt-1">Inclui chapas, perfis, parafusos, massa e fita</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {/* Resumo do Cálculo */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-blue-900">Resumo do Cálculo</h3>
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                              Modalidade: {resultadoCalculo.modalidade.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-blue-900">{resultadoCalculo.areaTotal.toFixed(2)}</div>
+                              <div className="text-blue-700">m² líquidos</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-blue-900">{resultadoCalculo.resumo.totalChapas}</div>
+                              <div className="text-blue-700">chapas</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-blue-900">{resultadoCalculo.resumo.totalPerfis}</div>
+                              <div className="text-blue-700">perfis</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-blue-900">{resultadoCalculo.resumo.totalParafusos}</div>
+                              <div className="text-blue-700">parafusos</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Chapas */}
+                        <div className="bg-white border border-gray-200 rounded-lg">
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <Package className="h-5 w-5 mr-2 text-gray-600" />
+                              Chapas Drywall
+                            </h3>
+                          </div>
+                          <div className="p-4">
+                            <div className="space-y-3">
+                              {resultadoCalculo.materiais.chapas.map((item, index) => (
+                                <div key={index} className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">{item.item}</div>
+                                    <div className="text-sm text-gray-600">{item.descricao}</div>
+                                    {item.observacoes && (
+                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
+                                    )}
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Perfis */}
+                        <div className="bg-white border border-gray-200 rounded-lg">
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <Ruler className="h-5 w-5 mr-2 text-gray-600" />
+                              Perfis Metálicos
+                            </h3>
+                          </div>
+                          <div className="p-4">
+                            <div className="space-y-3">
+                              {resultadoCalculo.materiais.perfis.map((item, index) => (
+                                <div key={index} className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">{item.item}</div>
+                                    <div className="text-sm text-gray-600">{item.descricao}</div>
+                                    {item.observacoes && (
+                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
+                                    )}
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fixação */}
+                        <div className="bg-white border border-gray-200 rounded-lg">
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <Settings className="h-5 w-5 mr-2 text-gray-600" />
+                              Fixação
+                            </h3>
+                          </div>
+                          <div className="p-4">
+                            <div className="space-y-3">
+                              {resultadoCalculo.materiais.fixacao.map((item, index) => (
+                                <div key={index} className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">{item.item}</div>
+                                    <div className="text-sm text-gray-600">{item.descricao}</div>
+                                    {item.observacoes && (
+                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
+                                    )}
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Acabamento */}
+                        <div className="bg-white border border-gray-200 rounded-lg">
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <Layers className="h-5 w-5 mr-2 text-gray-600" />
+                              Acabamento
+                            </h3>
+                          </div>
+                          <div className="p-4">
+                            <div className="space-y-3">
+                              {resultadoCalculo.materiais.acabamento.map((item, index) => (
+                                <div key={index} className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">{item.item}</div>
+                                    <div className="text-sm text-gray-600">{item.descricao}</div>
+                                    {item.observacoes && (
+                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
+                                    )}
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -587,6 +824,7 @@ export default function DivisoriaDrywallPage() {
               </div>
               <div className="space-y-4">
                 {especificacoesPadrao && (
+                  medida.especificacoes.tipoChapa !== especificacoesPadrao.tipoChapa ||
                   medida.especificacoes.tipoMontante !== especificacoesPadrao.tipoMontante ||
                   medida.especificacoes.chapasPorLado !== especificacoesPadrao.chapasPorLado ||
                   medida.especificacoes.incluirIsolamento !== especificacoesPadrao.incluirIsolamento
@@ -599,6 +837,7 @@ export default function DivisoriaDrywallPage() {
                       <button
                         onClick={() => {
                           atualizarMedida(medida.id, 'especificacoes', {
+                            tipoChapa: especificacoesPadrao.tipoChapa,
                             tipoMontante: especificacoesPadrao.tipoMontante,
                             chapasPorLado: especificacoesPadrao.chapasPorLado,
                             incluirIsolamento: especificacoesPadrao.incluirIsolamento
@@ -612,7 +851,18 @@ export default function DivisoriaDrywallPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Tipo de Montante</label>
+                  <label className="block text-sm text-gray-600 mb-1">Medida de Chapa</label>
+                  <select 
+                    className="input-field"
+                    value={medida.especificacoes.tipoChapa}
+                    onChange={(e) => atualizarMedida(medida.id, 'especificacoes', { tipoChapa: e.target.value })}
+                  >
+                    <option value="1.80">1,20 x 1,80m (Padrão)</option>
+                    <option value="2.40">1,20 x 2,40m</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Montante</label>
                   <select 
                     className="input-field"
                     value={medida.especificacoes.tipoMontante}
@@ -624,14 +874,15 @@ export default function DivisoriaDrywallPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Chapas por Lado</label>
+                  <label className="block text-sm text-gray-600 mb-1">Chapeamento</label>
                   <select 
                     className="input-field"
                     value={medida.especificacoes.chapasPorLado}
                     onChange={(e) => atualizarMedida(medida.id, 'especificacoes', { chapasPorLado: e.target.value })}
                   >
-                    <option value="1">1 chapa</option>
-                    <option value="2">2 chapas (Dupla)</option>
+                    <option value="simples">Simples</option>
+                    <option value="duplo">Duplo</option>
+                    <option value="quadruplo">Quadruplo</option>
                   </select>
                 </div>
                 <div>
@@ -661,6 +912,7 @@ export default function DivisoriaDrywallPage() {
                     // Se é a primeira especificação configurada, definir como padrão
                     if (!especificacoesPadrao) {
                       setEspecificacoesPadrao({
+                        tipoChapa: medida.especificacoes.tipoChapa,
                         tipoMontante: medida.especificacoes.tipoMontante,
                         chapasPorLado: medida.especificacoes.chapasPorLado,
                         incluirIsolamento: medida.especificacoes.incluirIsolamento
@@ -692,7 +944,7 @@ export default function DivisoriaDrywallPage() {
                   <h3 className="text-lg font-semibold">Vãos e Aberturas</h3>
                   {medida.vaos.preenchido ? (
                     <div className="text-sm text-gray-600 mt-1">
-                      {(medida.vaos.portas && medida.vaos.portas !== '0') || (medida.vaos.janelas && medida.vaos.janelas !== '0')
+                      {medida.vaos.porta.tipo !== 'nenhuma' || (medida.vaos.janelas.quantidade && medida.vaos.janelas.quantidade !== '0')
                         ? "🟢 Parede com vãos configurados"
                         : "🔴 Parede sem dados de vãos"}
                     </div>
@@ -715,27 +967,120 @@ export default function DivisoriaDrywallPage() {
                     💡 <strong>Sistema de cores:</strong> 🔴 Sem dados/configurar → 🟢 Com vãos
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Portas</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="input-field"
-                    placeholder="Quantidade"
-                    value={medida.vaos.portas}
-                    onChange={(e) => atualizarMedida(medida.id, 'vaos', { portas: e.target.value })}
-                  />
+                
+                {/* Porta */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Porta</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Tipo</label>
+                      <select 
+                        className="input-field"
+                        value={medida.vaos.porta.tipo}
+                        onChange={(e) => atualizarMedida(medida.id, 'vaos', { 
+                          porta: { 
+                            ...medida.vaos.porta, 
+                            tipo: e.target.value as 'nenhuma' | 'comum' | 'passagem'
+                          } 
+                        })}
+                      >
+                        <option value="nenhuma">Nenhuma</option>
+                        <option value="comum">Porta Comum</option>
+                        <option value="passagem">Vão de Passagem</option>
+                      </select>
+                    </div>
+                    
+                    {medida.vaos.porta.tipo !== 'nenhuma' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Largura (m)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="input-field"
+                            placeholder="0.80"
+                            value={medida.vaos.porta.largura}
+                            onChange={(e) => atualizarMedida(medida.id, 'vaos', { 
+                              porta: { ...medida.vaos.porta, largura: e.target.value } 
+                            })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Altura (m)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="input-field"
+                            placeholder="2.10"
+                            value={medida.vaos.porta.altura}
+                            onChange={(e) => atualizarMedida(medida.id, 'vaos', { 
+                              porta: { ...medida.vaos.porta, altura: e.target.value } 
+                            })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Janelas</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="input-field"
-                    placeholder="Quantidade"
-                    value={medida.vaos.janelas}
-                    onChange={(e) => atualizarMedida(medida.id, 'vaos', { janelas: e.target.value })}
-                  />
+
+                {/* Janelas */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Janelas</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Quantidade</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="input-field"
+                        placeholder="0"
+                        value={medida.vaos.janelas.quantidade}
+                        onChange={(e) => atualizarMedida(medida.id, 'vaos', { 
+                          janelas: { ...medida.vaos.janelas, quantidade: e.target.value } 
+                        })}
+                      />
+                    </div>
+                    
+                    {medida.vaos.janelas.quantidade && medida.vaos.janelas.quantidade !== '0' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Largura Total (m)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="input-field"
+                            placeholder="1.20"
+                            value={medida.vaos.janelas.largura}
+                            onChange={(e) => atualizarMedida(medida.id, 'vaos', { 
+                              janelas: { ...medida.vaos.janelas, largura: e.target.value } 
+                            })}
+                          />
+                          <div className="text-xs text-gray-500 mt-1">
+                            {medida.vaos.janelas.quantidade && parseInt(medida.vaos.janelas.quantidade) > 1 && 
+                              `${(parseFloat(medida.vaos.janelas.largura || '0') / parseInt(medida.vaos.janelas.quantidade)).toFixed(2)}m por janela`
+                            }
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Altura (m)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="input-field"
+                            placeholder="1.05"
+                            value={medida.vaos.janelas.altura}
+                            onChange={(e) => atualizarMedida(medida.id, 'vaos', { 
+                              janelas: { ...medida.vaos.janelas, altura: e.target.value } 
+                            })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end space-x-3 mt-6">

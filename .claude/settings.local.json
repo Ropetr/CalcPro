@@ -29,7 +29,10 @@
       "Bash(del \"src\\lib\\calculators\\forro-modular\\placas\\test-canto-otimizado.ts\")",
       "Bash(del \"src\\lib\\calculators\\forro-modular\\placas\\test-validacao-final.ts\")",
       "Bash(copy:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(ls:*)",
+      "Bash(npm run:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
