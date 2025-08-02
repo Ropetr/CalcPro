@@ -112,6 +112,7 @@ interface Ambiente {
 }
 
 export default function ForroModularPage() {
+  const [activeForro, setActiveForro] = useState<'forrovid' | 'gesso' | 'isopor' | 'mineral' | 'pvc' | 'rockfon' | 'info'>('gesso')
   const [activeTab, setActiveTab] = useState<'medidas' | 'desenho' | 'materiais'>('medidas')
   const [searchTerm, setSearchTerm] = useState('')
   const [modalAberto, setModalAberto] = useState<{tipo: 'especificacoes' | 'recortes' | null, ambienteId: string | null}>({tipo: null, ambienteId: null})
@@ -201,8 +202,8 @@ export default function ForroModularPage() {
     let perfisCompletos125 = 0
     
     ambientes.forEach(ambiente => {
-      const largura = parseFloat(ambiente.largura)
-      const comprimento = parseFloat(ambiente.comprimento)
+      const largura = parseFloat(ambiente.largura.replace(',', '.'))
+      const comprimento = parseFloat(ambiente.comprimento.replace(',', '.'))
       
       // PERFIL T 3,12m (horizontais entre fileiras de placas)
       const fileirasPlacas = Math.ceil(comprimento / placaDimensions.comprimento)
@@ -313,8 +314,8 @@ export default function ForroModularPage() {
 
   // Função para analisar ambiente individual
   const analisarAmbienteIndividual = (ambiente: Ambiente, placaDimensions: {largura: number, comprimento: number}, tipoPlaca?: string) => {
-    const largura = parseFloat(ambiente.largura)
-    const comprimento = parseFloat(ambiente.comprimento)
+    const largura = parseFloat(ambiente.largura.replace(',', '.'))
+    const comprimento = parseFloat(ambiente.comprimento.replace(',', '.'))
     
     // ANÁLISE DAS PLACAS - usando sistema modular otimizado
     const tipoPlacaCalculadora = tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
@@ -464,8 +465,8 @@ export default function ForroModularPage() {
 
     // Processar cada ambiente individualmente por parede
     ambientes.forEach(ambiente => {
-      const largura = parseFloat(ambiente.largura) || 0
-      const comprimento = parseFloat(ambiente.comprimento) || 0
+      const largura = parseFloat(ambiente.largura.replace(',', '.')) || 0
+      const comprimento = parseFloat(ambiente.comprimento.replace(',', '.')) || 0
       
       if (largura === 0 || comprimento === 0) {
         detalhesAmbientes[ambiente.id] = { 
@@ -591,21 +592,21 @@ export default function ForroModularPage() {
     // 1. CÁLCULO OTIMIZADO DAS PLACAS (usando sistema modular com aproveitamento do canto)
     const tipoPlaca = ambienteReferencia.especificacoes.tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
     const totalPlacas = ambientes.reduce((total, amb) => {
-      const largura = parseFloat(amb.largura);
-      const comprimento = parseFloat(amb.comprimento);
+      const largura = parseFloat(amb.largura.replace(',', '.'));
+      const comprimento = parseFloat(amb.comprimento.replace(',', '.'));
       
       const resultadoPlacas = calcularPlacas(largura, comprimento, tipoPlaca);
       return total + resultadoPlacas.totalPlacas;
     }, 0);
 
     // Usar médias para os demais cálculos (simplificado)
-    const larguraMedia = ambientes.reduce((total, amb) => total + parseFloat(amb.largura), 0) / ambientes.length;
-    const comprimentoMedio = ambientes.reduce((total, amb) => total + parseFloat(amb.comprimento), 0) / ambientes.length;
+    const larguraMedia = ambientes.reduce((total, amb) => total + parseFloat(amb.largura.replace(',', '.')), 0) / ambientes.length;
+    const comprimentoMedio = ambientes.reduce((total, amb) => total + parseFloat(amb.comprimento.replace(',', '.')), 0) / ambientes.length;
 
     // 2. OTIMIZAÇÃO GLOBAL DE PERFIS T - usando novo sistema modular
     const ambientesParaPerfis = ambientes.map(amb => ({
-      largura: parseFloat(amb.largura),
-      comprimento: parseFloat(amb.comprimento),
+      largura: parseFloat(amb.largura.replace(',', '.')),
+      comprimento: parseFloat(amb.comprimento.replace(',', '.')),
       nome: amb.nome
     }));
     
@@ -624,7 +625,7 @@ export default function ForroModularPage() {
     const penduraisPorFileira = Math.floor(larguraMedia / 1.20);
     // Calcular fileiras médias de perfis T para pendurais
     const fileirasMedias = ambientes.reduce((total, amb) => {
-      const comp = parseFloat(amb.comprimento) || 0;
+      const comp = parseFloat(amb.comprimento.replace(',', '.')) || 0;
       return total + Math.max(0, Math.ceil(comp / 1.25) - 1);
     }, 0) / ambientes.length;
     const totalPendurais = penduraisPorFileira * Math.ceil(fileirasMedias) * ambientes.length;
@@ -633,8 +634,8 @@ export default function ForroModularPage() {
 
     // 7. PARAFUSOS E BUCHAS
     const perimetroTotal = ambientes.reduce((total, amb) => {
-      const largura = parseFloat(amb.largura);
-      const comprimento = parseFloat(amb.comprimento);
+      const largura = parseFloat(amb.largura.replace(',', '.'));
+      const comprimento = parseFloat(amb.comprimento.replace(',', '.'));
       return total + ((largura + comprimento) * 2);
     }, 0);
     const chipboardBuchas = Math.ceil(perimetroTotal / 0.50);
@@ -652,8 +653,8 @@ export default function ForroModularPage() {
 
     // 8. TRAVAS DE PLACA (calculadas por ambiente e somadas)
     const totalTravas = ambientes.reduce((total, amb) => {
-      const largura = parseFloat(amb.largura);
-      const comprimento = parseFloat(amb.comprimento);
+      const largura = parseFloat(amb.largura.replace(',', '.'));
+      const comprimento = parseFloat(amb.comprimento.replace(',', '.'));
       const qtdLargura = largura / placaDimensions.largura;
       const qtdComprimento = comprimento / placaDimensions.comprimento;
       const colunas = Math.ceil(qtdLargura);
@@ -762,8 +763,10 @@ export default function ForroModularPage() {
           
           // Calcular área automaticamente
           if (campo === 'comprimento' || campo === 'largura') {
-            const comprimento = parseFloat(campo === 'comprimento' ? valor : updated.comprimento) || 0
-            const largura = parseFloat(campo === 'largura' ? valor : updated.largura) || 0
+            const comprimentoStr = campo === 'comprimento' ? valor : updated.comprimento
+            const larguraStr = campo === 'largura' ? valor : updated.largura
+            const comprimento = parseFloat(comprimentoStr.replace(',', '.')) || 0
+            const largura = parseFloat(larguraStr.replace(',', '.')) || 0
             updated.area = comprimento * largura
           }
           return updated
@@ -773,7 +776,56 @@ export default function ForroModularPage() {
     }))
   }
 
-  const areaTotal = ambientes.reduce((total, ambiente) => total + ambiente.area, 0)
+  // Função para formatar campos numéricos com 2 casas decimais
+  const formatarNumero = (valor: string): string => {
+    if (!valor || valor === '') return ''
+    
+    // Remove espaços em branco
+    valor = valor.trim()
+    if (!valor) return ''
+    
+    // Remove caracteres não numéricos exceto vírgula e ponto
+    let numeroLimpo = valor.replace(/[^\d,.-]/g, '')
+    
+    // Se não sobrou nada válido, retorna o valor original
+    if (!numeroLimpo) return valor
+    
+    // Substitui vírgula por ponto para cálculo
+    numeroLimpo = numeroLimpo.replace(',', '.')
+    
+    const numero = parseFloat(numeroLimpo)
+    if (isNaN(numero)) return valor // Retorna valor original se não conseguir converter
+    
+    // Formata com 2 casas decimais e substitui ponto por vírgula
+    return numero.toFixed(2).replace('.', ',')
+  }
+
+  // Função para formatar campos de quantidade (números inteiros)
+  const formatarQuantidade = (valor: string): string => {
+    if (!valor || valor === '') return ''
+    
+    // Remove espaços em branco
+    valor = valor.trim()
+    if (!valor) return ''
+    
+    // Remove caracteres não numéricos
+    const numeroLimpo = valor.replace(/[^\d]/g, '')
+    
+    // Se não sobrou nada válido, retorna vazio
+    if (!numeroLimpo) return ''
+    
+    const numero = parseInt(numeroLimpo)
+    if (isNaN(numero)) return ''
+    
+    return numero.toString()
+  }
+
+  // Calcular apenas ambientes com dimensões preenchidas
+  const ambientesValidos = ambientes.filter(ambiente => 
+    ambiente.comprimento && ambiente.largura && 
+    parseFloat(ambiente.comprimento.replace(',', '.')) > 0 && parseFloat(ambiente.largura.replace(',', '.')) > 0
+  )
+  const areaTotal = ambientesValidos.reduce((total, ambiente) => total + ambiente.area, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (ambiente: Ambiente) => {
@@ -866,7 +918,7 @@ export default function ForroModularPage() {
                   {result ? result.area.toFixed(2) : areaTotal.toFixed(2)} m²
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {ambientes.length} ambiente{ambientes.length !== 1 ? 's' : ''}
+                  {ambientesValidos.length} ambiente{ambientesValidos.length !== 1 ? 's' : ''}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow p-6 text-center">
@@ -884,12 +936,91 @@ export default function ForroModularPage() {
               <div className="bg-white rounded-lg shadow p-6 text-center">
                 <Package className="h-8 w-8 text-green-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Ambientes</div>
-                <div className="text-2xl font-bold text-gray-900">{ambientes.length}</div>
+                <div className="text-2xl font-bold text-gray-900">{ambientesValidos.length}</div>
               </div>
             </div>
 
             {/* Área Principal com Abas */}
             <div className="bg-white rounded-lg shadow mb-8">
+              {/* Abas dos Tipos de Forro - Estilo Navegador */}
+              <div className="bg-gray-100">
+                <div className="flex items-end justify-start px-4 pt-2">
+                  <div className="flex">
+                    <button
+                      onClick={() => setActiveForro('forrovid')}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                        activeForro === 'forrovid'
+                          ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
+                      }`}
+                    >
+                      Forrovid
+                    </button>
+                    <button
+                      onClick={() => setActiveForro('gesso')}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                        activeForro === 'gesso'
+                          ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
+                      }`}
+                    >
+                      Gesso
+                    </button>
+                    <button
+                      onClick={() => setActiveForro('isopor')}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                        activeForro === 'isopor'
+                          ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
+                      }`}
+                    >
+                      Isopor
+                    </button>
+                    <button
+                      onClick={() => setActiveForro('mineral')}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                        activeForro === 'mineral'
+                          ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
+                      }`}
+                    >
+                      Mineral
+                    </button>
+                    <button
+                      onClick={() => setActiveForro('pvc')}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                        activeForro === 'pvc'
+                          ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
+                      }`}
+                    >
+                      PVC
+                    </button>
+                    <button
+                      onClick={() => setActiveForro('rockfon')}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                        activeForro === 'rockfon'
+                          ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
+                      }`}
+                    >
+                      Rockfon
+                    </button>
+                    <button
+                      onClick={() => setActiveForro('info')}
+                      className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                        activeForro === 'info'
+                          ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg'
+                      }`}
+                    >
+                      INFO
+                    </button>
+                  </div>
+                </div>
+                <div className="border-b border-gray-300"></div>
+              </div>
+              
               <div className="border-b border-gray-200">
                 <div className="flex items-center justify-between p-6 pb-0">
                   <div className="flex space-x-8">
@@ -946,6 +1077,69 @@ export default function ForroModularPage() {
 
               {/* Conteúdo das Abas */}
               <div className="p-6">
+                {activeForro === 'info' ? (
+                  // Aba INFO
+                  <div className="space-y-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                      <div className="flex items-center mb-4">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-white font-bold text-lg">ℹ</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-blue-900">Calculadora de Forro Modular</h3>
+                          <p className="text-blue-700">Sistema inteligente para cálculo de materiais</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="font-semibold text-blue-900 mb-3">🎯 Como Usar:</h4>
+                          <ul className="space-y-2 text-sm text-blue-800">
+                            <li>• <strong>Selecione o tipo de forro</strong> nas abas superiores</li>
+                            <li>• <strong>Configure especificações</strong> (Utilize as Flags Vermelhas)</li>
+                            <li>• <strong>Adicione ambientes</strong> com largura e comprimento</li>
+                            <li>• <strong>Defina recortes</strong> para luminárias, difusores e sprinklers</li>
+                            <li>• <strong>Visualize resultados</strong> em "Plano de Corte" e "Lista Geral"</li>
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-semibold text-blue-900 mb-3">⚡ Funcionalidades:</h4>
+                          <ul className="space-y-2 text-sm text-blue-800">
+                            <li>• <strong>Otimização automática</strong> de cortes e aproveitamento</li>
+                            <li>• <strong>Cálculo inteligente</strong> por ambiente individual</li>
+                            <li>• <strong>Sistema modular</strong> com máxima economia</li>
+                            <li>• <strong>Formatação automática</strong> de medidas (vírgula decimal)</li>
+                          </ul>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <h4 className="font-semibold text-yellow-900 mb-2">💡 Dicas Importantes:</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-yellow-800">
+                          <div>
+                            <p>• Use <strong>vírgula</strong> para casas decimais (ex: 4,50)</p>
+                            <p>• Pressione <strong>Tab</strong> para mudar de células e adicionar mais um ambiente</p>
+                            <p>• Pressione <strong>Enter</strong> para calcular</p>
+                          </div>
+                          <div>
+                            <p>• Sistema considera aproveitamento de sobras</p>
+                            <p>• Cada tipo de forro terá parâmetros específicos</p>
+                            <p>• Plano de corte mostra otimização detalhada</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 className="font-semibold text-green-900 mb-2">🔧 Versão Atual:</h4>
+                        <p className="text-sm text-green-800">
+                          Calculadora Forro Modular v2.0 - Sistema com otimização avançada e integração ERP
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                <>
                 {activeTab === 'medidas' && (
                   <div className="space-y-4">
                     {ambientes.length === 0 && (
@@ -1032,26 +1226,26 @@ export default function ForroModularPage() {
                               <div>
                                 <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
                                 <input
-                                  type="number"
-                                  step="0.01"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={ambiente.largura}
                                   onChange={(e) => atualizarAmbiente(ambiente.id, 'largura', e.target.value)}
-                                  onBlur={(e) => atualizarAmbiente(ambiente.id, 'largura', e.target.value)}
+                                  onBlur={(e) => atualizarAmbiente(ambiente.id, 'largura', formatarNumero(e.target.value))}
                                   className="input-field text-sm"
-                                  placeholder="3.50"
+                                  placeholder="3,50"
                                   data-field="largura"
                                 />
                               </div>
                               <div>
                                 <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
                                 <input
-                                  type="number"
-                                  step="0.01"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={ambiente.comprimento}
                                   onChange={(e) => atualizarAmbiente(ambiente.id, 'comprimento', e.target.value)}
-                                  onBlur={(e) => atualizarAmbiente(ambiente.id, 'comprimento', e.target.value)}
+                                  onBlur={(e) => atualizarAmbiente(ambiente.id, 'comprimento', formatarNumero(e.target.value))}
                                   className="input-field text-sm"
-                                  placeholder="4.50"
+                                  placeholder="4,50"
                                   data-field="comprimento"
                                 />
                               </div>
@@ -1072,29 +1266,6 @@ export default function ForroModularPage() {
                         )
                       })}
                     </div>
-                    
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-600">
-                          Total de {ambientes.length} ambiente{ambientes.length !== 1 ? 's' : ''}
-                        </div>
-                        <div className="text-lg font-semibold text-gray-900">
-                          {areaTotal.toFixed(2)} m²
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="text-xs text-gray-500">
-                          Pressione <kbd className="px-1 py-0.5 bg-white text-gray-600 text-xs rounded">Tab</kbd> para novo ambiente ou <kbd className="px-1 py-0.5 bg-white text-gray-600 text-xs rounded">Enter</kbd> para calcular
-                        </div>
-                        <button 
-                          onClick={calcularForroModular}
-                          className="btn-primary text-sm flex items-center"
-                        >
-                          <Calculator className="h-4 w-4 mr-2" />
-                          Calcular
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -1111,8 +1282,8 @@ export default function ForroModularPage() {
                     ) : (
                       <div className="space-y-6">
                         {ambientes.map((ambiente) => {
-                          const largura = parseFloat(ambiente.largura) || 0
-                          const comprimento = parseFloat(ambiente.comprimento) || 0
+                          const largura = parseFloat(ambiente.largura.replace(',', '.')) || 0
+                          const comprimento = parseFloat(ambiente.comprimento.replace(',', '.')) || 0
                           
                           if (largura === 0 || comprimento === 0) {
                             return (
@@ -1260,7 +1431,7 @@ export default function ForroModularPage() {
                                         <div className="space-y-1 text-xs">
                                           {(() => {
                                             const tipoPlacaCalculadora = tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
-                                            const resultadoDetalhado = calcularPlacas(parseFloat(ambiente.largura), parseFloat(ambiente.comprimento), tipoPlacaCalculadora);
+                                            const resultadoDetalhado = calcularPlacas(parseFloat(ambiente.largura.replace(',', '.')), parseFloat(ambiente.comprimento.replace(',', '.')), tipoPlacaCalculadora);
                                             
                                             return (
                                               <>
@@ -1417,8 +1588,8 @@ export default function ForroModularPage() {
                                             Cantoneiras
                                           </div>
                                           <span className="font-medium text-green-900">{(() => {
-                                            const largura = parseFloat(ambiente.largura) || 0;
-                                            const comprimento = parseFloat(ambiente.comprimento) || 0;
+                                            const largura = parseFloat(ambiente.largura.replace(',', '.')) || 0;
+                                            const comprimento = parseFloat(ambiente.comprimento.replace(',', '.')) || 0;
                                             const cantoneiraResultado = calcularCantoneirasMultiplosAmbientes([
                                               { largura, comprimento, nome: ambiente.nome }
                                             ]);
@@ -1428,8 +1599,8 @@ export default function ForroModularPage() {
                                         <hr className="border-green-200 mb-2" />
                                         <div className="space-y-1 text-xs">
                                           {(() => {
-                                            const largura = parseFloat(ambiente.largura) || 0;
-                                            const comprimento = parseFloat(ambiente.comprimento) || 0;
+                                            const largura = parseFloat(ambiente.largura.replace(',', '.')) || 0;
+                                            const comprimento = parseFloat(ambiente.comprimento.replace(',', '.')) || 0;
                                             
                                             // Usar lógica otimizada da calculadora principal
                                             const cantoneiraResultado = calcularCantoneirasMultiplosAmbientes([
@@ -1667,12 +1838,14 @@ export default function ForroModularPage() {
                     )}
                   </div>
                 )}
+                </>
+                )}
               </div>
             </div>
           </div>
 
           {/* Botão flutuante para adicionar ambiente */}
-          {activeTab === 'medidas' && (
+          {activeTab === 'medidas' && activeForro !== 'info' && (
             <button
               onClick={adicionarAmbiente}
               className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors z-30"
@@ -1760,12 +1933,13 @@ export default function ForroModularPage() {
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Altura do Pendural (m)</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     className="input-field"
                     value={ambiente.especificacoes.alturaPendural}
                     onChange={(e) => atualizarAmbiente(ambiente.id, 'especificacoes', { alturaPendural: e.target.value })}
-                    placeholder="Ex: 0.50"
+                    onBlur={(e) => atualizarAmbiente(ambiente.id, 'especificacoes', { alturaPendural: formatarNumero(e.target.value) })}
+                    placeholder="Ex: 0,50"
                   />
                 </div>
                 
@@ -1859,36 +2033,39 @@ export default function ForroModularPage() {
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Luminárias</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     className="input-field"
                     placeholder="Quantidade"
                     value={ambiente.recortes.luminarias}
                     onChange={(e) => atualizarAmbiente(ambiente.id, 'recortes', { luminarias: e.target.value })}
+                    onBlur={(e) => atualizarAmbiente(ambiente.id, 'recortes', { luminarias: formatarQuantidade(e.target.value) })}
                   />
                 </div>
                 
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Difusores de Ar</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     className="input-field"
                     placeholder="Quantidade"
                     value={ambiente.recortes.difusores}
                     onChange={(e) => atualizarAmbiente(ambiente.id, 'recortes', { difusores: e.target.value })}
+                    onBlur={(e) => atualizarAmbiente(ambiente.id, 'recortes', { difusores: formatarQuantidade(e.target.value) })}
                   />
                 </div>
                 
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Sprinklers</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     className="input-field"
                     placeholder="Quantidade"
                     value={ambiente.recortes.sprinklers}
                     onChange={(e) => atualizarAmbiente(ambiente.id, 'recortes', { sprinklers: e.target.value })}
+                    onBlur={(e) => atualizarAmbiente(ambiente.id, 'recortes', { sprinklers: formatarQuantidade(e.target.value) })}
                   />
                 </div>
               </div>
