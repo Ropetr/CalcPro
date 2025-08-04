@@ -76,7 +76,7 @@ export default function DivisoriaDrywallPage() {
       especificacoes: {
         tipoChapa: '1.80' as const,
         tipoMontante: '48' as const,
-        chapasPorLado: 'simples' as const,
+        chapasPorLado: 'duplo' as const,
         incluirIsolamento: false,
         preenchido: false
       },
@@ -203,7 +203,7 @@ export default function DivisoriaDrywallPage() {
       } : {
         tipoChapa: '1.80' as const,
         tipoMontante: '48' as const,
-        chapasPorLado: 'simples' as const,
+        chapasPorLado: 'duplo' as const,
         incluirIsolamento: false,
         preenchido: false
       },
