@@ -32,7 +32,8 @@
       "Bash(true)",
       "Bash(ls:*)",
       "Bash(npm run:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }
