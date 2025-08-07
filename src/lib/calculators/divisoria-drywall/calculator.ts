@@ -86,7 +86,7 @@ export class DrywallCalculator {
     const chapas: CalculoMaterial[] = []
     
     // Agrupar chapas por tipo e altura
-    const chapasPorTipo: {[key: string]: {standard: number, rf: number, altura: string}} = {}
+    const chapasPorTipo: {[key: string]: {standard: number, ru: number, rf: number, altura: string}} = {}
     
     paredes.forEach(parede => {
       let chapasPorLado = 1
@@ -128,15 +128,23 @@ export class DrywallCalculator {
       const tipoChapa = parede.especificacoes.tipoChapa
       
       if (!chapasPorTipo[tipoChapa]) {
-        chapasPorTipo[tipoChapa] = {standard: 0, rf: 0, altura: alturaChapa.toString()}
+        chapasPorTipo[tipoChapa] = {standard: 0, ru: 0, rf: 0, altura: alturaChapa.toString()}
       }
       
-      // Verificar se precisa de chapa RF (resistente ao fogo) - ambientes molhados
-      if (parede.descricao.toLowerCase().includes('banheiro') || 
-          parede.descricao.toLowerCase().includes('cozinha') ||
-          parede.descricao.toLowerCase().includes('área')) {
+      // Classificar tipo de chapa baseado no ambiente
+      const descricaoLower = parede.descricao.toLowerCase()
+      
+      if (descricaoLower.includes('sauna') || descricaoLower.includes('churrasqueira') || 
+          descricaoLower.includes('forno') || descricaoLower.includes('lareira')) {
+        // RF - Resistente ao Fogo para ambientes com alta temperatura
         chapasPorTipo[tipoChapa].rf += chapasNecessarias
+      } else if (descricaoLower.includes('banheiro') || descricaoLower.includes('cozinha') ||
+                 descricaoLower.includes('área') || descricaoLower.includes('lavanderia') ||
+                 descricaoLower.includes('lavabo') || descricaoLower.includes('wc')) {
+        // RU - Resistente à Umidade para ambientes molhados
+        chapasPorTipo[tipoChapa].ru += chapasNecessarias
       } else {
+        // ST - Standard para ambientes secos normais
         chapasPorTipo[tipoChapa].standard += chapasNecessarias
       }
     })
@@ -145,15 +153,26 @@ export class DrywallCalculator {
     Object.entries(chapasPorTipo).forEach(([altura, dados]) => {
       // Adicionar 10% de perda
       const standardComPerda = Math.ceil(dados.standard * 1.1)
+      const ruComPerda = Math.ceil(dados.ru * 1.1)
       const rfComPerda = Math.ceil(dados.rf * 1.1)
       
       if (standardComPerda > 0) {
         chapas.push({
-          item: 'Chapa Drywall Standard',
-          descricao: `1,20m x ${altura}m x 12,5mm`,
+          item: 'Chapa Drywall ST',
+          descricao: `1,20m x ${altura}m x 12,5mm (Standard)`,
           quantidade: standardComPerda,
           unidade: 'un',
-          observacoes: 'Inclui 10% para perdas e recortes'
+          observacoes: 'Para ambientes secos - inclui 10% para perdas e recortes'
+        })
+      }
+      
+      if (ruComPerda > 0) {
+        chapas.push({
+          item: 'Chapa Drywall RU',
+          descricao: `1,20m x ${altura}m x 12,5mm (Resistente à Umidade)`,
+          quantidade: ruComPerda,
+          unidade: 'un',
+          observacoes: 'Para ambientes molhados - inclui 10% para perdas'
         })
       }
       
@@ -163,7 +182,7 @@ export class DrywallCalculator {
           descricao: `1,20m x ${altura}m x 12,5mm (Resistente ao Fogo)`,
           quantidade: rfComPerda,
           unidade: 'un',
-          observacoes: 'Para ambientes molhados - inclui 10% para perdas'
+          observacoes: 'Para ambientes com alta temperatura - inclui 10% para perdas'
         })
       }
     })
@@ -188,8 +207,9 @@ export class DrywallCalculator {
       // Guias: 2 x largura (piso e teto)
       const metrosGuia = largura * 2
       
-      // Montantes: espaçados a cada 60cm + extremidades
-      const quantidadeMontantes = Math.ceil(largura / 0.6) + 1
+      // Montantes: espaçados conforme especificação + extremidades
+      const espacamento = parseFloat(parede.especificacoes.espacamentoMontante)
+      const quantidadeMontantes = Math.ceil(largura / espacamento) + 1
       const metrosMontante = quantidadeMontantes * altura
       
       const tipoMontante = parede.especificacoes.tipoMontante
@@ -245,7 +265,8 @@ export class DrywallCalculator {
     
     // Parafusos para estrutura: 6 unidades por metro linear de montante
     const metrosLinearesMontante = paredes.reduce((total, parede) => {
-      const quantidadeMontantes = Math.ceil(parede.largura / 0.6) + 1
+      const espacamento = parseFloat(parede.especificacoes.espacamentoMontante)
+      const quantidadeMontantes = Math.ceil(parede.largura / espacamento) + 1
       return total + (quantidadeMontantes * parede.altura)
     }, 0)
     

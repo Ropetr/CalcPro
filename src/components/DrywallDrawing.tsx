@@ -10,7 +10,7 @@ interface DrywallDrawingProps {
 
 export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingProps) {
   // Estado para controlar qual lado está sendo visualizado
-  const [ladoAtivo, setLadoAtivo] = useState<'A' | 'B'>('A')
+  const [ladoAtivo, setLadoAtivo] = useState<'A' | 'A2' | 'B' | 'B2'>('A')
   // Dimensões em pixels (escala: 1m = 50px por padrão)
   const larguraPx = parede.largura * scale
   const alturaPx = parede.altura * scale
@@ -33,30 +33,6 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
   const svgWidth = finalWidth + 120 // Margem para cotas
   const svgHeight = finalHeight + 100 // Margem para cotas
 
-  // Calcular posições dos montantes baseado no tipo de montante
-  const montantes = []
-  const espacamentoMontanteReal = (() => {
-    const tipoMontante = parseInt(parede.especificacoes.tipoMontante)
-    
-    if (tipoMontante === 48) {
-      return 0.4 // Montante 48mm = espaçamento 0,40m
-    } else if (tipoMontante === 70) {
-      return parede.altura > 3.0 ? 0.4 : 0.6 // 70mm = 0,40m se parede alta, senão 0,60m
-    } else if (tipoMontante === 90) {
-      return 0.6 // Montante 90mm = espaçamento 0,60m
-    } else {
-      return 0.6 // Padrão
-    }
-  })()
-  const espacamentoMontante = espacamentoMontanteReal * finalScale
-  
-  for (let x = 0; x <= finalWidth; x += espacamentoMontante) {
-    montantes.push(x)
-  }
-  // Adicionar montante na extremidade se não coincide
-  if (montantes[montantes.length - 1] < finalWidth - 10) {
-    montantes.push(finalWidth)
-  }
 
   // Calcular vãos
   const vaos = []
@@ -67,10 +43,10 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
     const portaAltura = parede.vaos.porta.altura * finalScale
     const distanciaBorda = 0.10 * finalScale // 0,10m da borda
     
-    // Lado A: porta à esquerda | Lado B: porta à direita
-    const posX = (ladoAtivo === 'B' && (parede.especificacoes.chapasPorLado === 'duplo' || parede.especificacoes.chapasPorLado === 'quadruplo'))
-      ? finalWidth - portaLargura - distanciaBorda // Lado B: lado direito
-      : distanciaBorda // Lado A: lado esquerdo
+    // Lado A/A2: porta à esquerda | Lado B/B2: porta à direita
+    const posX = ((ladoAtivo === 'B' || ladoAtivo === 'B2') && (parede.especificacoes.chapasPorLado === 'duplo' || parede.especificacoes.chapasPorLado === 'quadruplo'))
+      ? finalWidth - portaLargura - distanciaBorda // Lado B/B2: lado direito
+      : distanciaBorda // Lado A/A2: lado esquerdo
     
     vaos.push({
       tipo: parede.vaos.porta.tipo === 'passagem' ? 'passagem' : 'porta',
@@ -96,12 +72,12 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
       const distanciaBorda = 0.10 * finalScale
       const espacoOcupadoPorPorta = distanciaBorda + portaLargura + (0.20 * finalScale) // 0,20m de distância
       
-      if (ladoAtivo === 'B' && (parede.especificacoes.chapasPorLado === 'duplo' || parede.especificacoes.chapasPorLado === 'quadruplo')) {
-        // Lado B: porta à direita, janelas usam lado esquerdo
+      if ((ladoAtivo === 'B' || ladoAtivo === 'B2') && (parede.especificacoes.chapasPorLado === 'duplo' || parede.especificacoes.chapasPorLado === 'quadruplo')) {
+        // Lado B/B2: porta à direita, janelas usam lado esquerdo
         espacoInicial = 0
         larguraDisponivel = finalWidth - espacoOcupadoPorPorta
       } else {
-        // Lado A: porta à esquerda, janelas usam lado direito
+        // Lado A/A2: porta à esquerda, janelas usam lado direito
         espacoInicial = espacoOcupadoPorPorta
         larguraDisponivel = finalWidth - espacoOcupadoPorPorta
       }
@@ -149,16 +125,40 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               >
                 Lado A
               </button>
+              {parede.especificacoes.chapasPorLado === 'quadruplo' && (
+                <button
+                  onClick={() => setLadoAtivo('A2')}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    ladoAtivo === 'A2'
+                      ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
+                  }`}
+                >
+                  Lado A2
+                </button>
+              )}
               <button
                 onClick={() => setLadoAtivo('B')}
                 className={`px-4 py-2 text-sm font-medium transition-colors ${
                   ladoAtivo === 'B'
                     ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg'
+                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg mr-px'
                 }`}
               >
                 Lado B
               </button>
+              {parede.especificacoes.chapasPorLado === 'quadruplo' && (
+                <button
+                  onClick={() => setLadoAtivo('B2')}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    ladoAtivo === 'B2'
+                      ? 'bg-white text-gray-900 border-t border-l border-r border-gray-300 rounded-t-lg -mb-px z-10'
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800 border-t border-l border-r border-gray-300 rounded-t-lg'
+                  }`}
+                >
+                  Lado B2
+                </button>
+              )}
             </div>
           </div>
           <div className="border-b border-gray-300"></div>
@@ -189,41 +189,11 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               y="0" 
               width={finalWidth} 
               height={finalHeight}
-              fill={parede.especificacoes.incluirIsolamento ? "url(#isolamento-pattern)" : "#ffffff"}
+              fill={parede.especificacoes.tratamentoAcustico !== 'nenhum' ? "url(#isolamento-pattern)" : "#ffffff"}
               stroke="#6b7280" 
               strokeWidth="2"
             />
             
-            {/* Guias (perfis horizontais - piso e teto) */}
-            <rect 
-              x="0" 
-              y="0" 
-              width={finalWidth} 
-              height="8"
-              fill="#374151"
-              opacity="0.8"
-            />
-            <rect 
-              x="0" 
-              y={finalHeight - 8} 
-              width={finalWidth} 
-              height="8"
-              fill="#374151"
-              opacity="0.8"
-            />
-            
-            {/* Montantes (perfis verticais) */}
-            {montantes.map((x, index) => (
-              <rect 
-                key={index}
-                x={x - 3} 
-                y="8" 
-                width="6" 
-                height={finalHeight - 16}
-                fill="#374151"
-                opacity="0.6"
-              />
-            ))}
             
             {/* Placas Drywall - Lado A - ALGORITMO DE OTIMIZAÇÃO */}
             {(ladoAtivo === 'A' || parede.especificacoes.chapasPorLado === 'simples') && (() => {
@@ -428,68 +398,18 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
               const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
               
-              // Espaçamento da estrutura baseado no tipo de montante
-              const ESPACAMENTO_ESTRUTURA = (() => {
-                // Lógica baseada no tipo de montante e altura da parede
-                const tipoMontante = parseInt(parede.especificacoes.tipoMontante)
-                
-                if (tipoMontante === 48) {
-                  return 0.4 // Montante 48mm = espaçamento 0,40m
-                } else if (tipoMontante === 70) {
-                  return parede.altura > 3.0 ? 0.4 : 0.6 // 70mm = 0,40m se parede alta, senão 0,60m
-                } else if (tipoMontante === 90) {
-                  return 0.6 // Montante 90mm = espaçamento 0,60m
-                } else {
-                  return 0.6 // Padrão
-                }
-              })()
-              
-              // ESTRATÉGIA INTELIGENTE DE DESENCONTRO baseada no espaçamento da estrutura
+              // ESTRATÉGIA SIMPLIFICADA DE DESENCONTRO
               let recorteDesencontro = 0
               
-              // Opções de desencontro disponíveis baseadas no espaçamento da estrutura
-              const opcaoEspacamento = ESPACAMENTO_ESTRUTURA // 0,40m ou 0,60m
-              const opcaoEspacamentoDuplo = ESPACAMENTO_ESTRUTURA * 2 // 0,80m ou 1,20m
-              const opcaoEspacamentoTriplo = ESPACAMENTO_ESTRUTURA * 3 // 1,20m ou 1,80m
-              
-              // Recortes típicos que podem estar disponíveis de outras placas
-              const recortesDisponiveis = [
-                opcaoEspacamento,           // 0,40 ou 0,60
-                opcaoEspacamentoDuplo,      // 0,80 ou 1,20  
-                opcaoEspacamentoTriplo,     // 1,20 ou 1,80
-                PLACA_ALTURA / 2,           // Meio da chapa (0,90 ou 1,20)
-                PLACA_ALTURA / 3,           // Terço da chapa (0,60 ou 0,80)
-                PLACA_ALTURA * (2/3)        // Dois terços da chapa (1,20 ou 1,60)
-              ].filter(recorte => recorte <= PLACA_ALTURA) // Só recortes menores que a chapa
-              
-              if (sobraAltura >= opcaoEspacamento) {
-                // PRIORIDADE 1: Usar a sobra real da parede (melhor aproveitamento)
+              if (sobraAltura >= 0.6) {
+                // Usar a sobra real da parede se for >= 60cm
                 recorteDesencontro = sobraAltura
               } else if (sobraAltura === 0 && placasInteirasNaAltura >= 2) {
-                // PRIORIDADE 2: Parede com altura múltipla da chapa
-                // Escolher o melhor recorte baseado no espaçamento da estrutura
-                if (ESPACAMENTO_ESTRUTURA === 0.4) {
-                  // Estrutura 0,40m: pode usar 0,40m, 0,80m ou até 1,20m
-                  if (placasInteirasNaAltura >= 4) {
-                    recorteDesencontro = 0.8 // Priorizar 0,80m para melhor aproveitamento
-                  } else {
-                    recorteDesencontro = 0.4 // Usar 0,40m
-                  }
-                } else {
-                  // Estrutura 0,60m: pode usar 0,60m ou 1,20m
-                  if (placasInteirasNaAltura >= 3) {
-                    recorteDesencontro = 1.2 // Priorizar 1,20m se há altura suficiente
-                  } else {
-                    recorteDesencontro = 0.6 // Usar 0,60m
-                  }
-                }
-              } else if (sobraAltura > 0 && sobraAltura < opcaoEspacamento) {
-                // PRIORIDADE 3: Aproveitar sobra pequena mesmo sendo menor que ideal
+                // Parede com altura múltipla da chapa - usar metade da altura
+                recorteDesencontro = PLACA_ALTURA / 2 // 0,90m para 1,80m ou 1,20m para 2,40m
+              } else if (sobraAltura > 0 && sobraAltura < 0.6) {
+                // Usar sobra pequena mesmo sendo menor que 60cm
                 recorteDesencontro = sobraAltura
-              } else if (placasInteirasNaAltura >= 2) {
-                // PRIORIDADE 4: Usar recorte disponível mais próximo ao espaçamento
-                const recorteOtimo = recortesDisponiveis.find(r => r >= opcaoEspacamento) || opcaoEspacamento
-                recorteDesencontro = recorteOtimo
               } else {
                 // SEM DESENCONTRO: Parede muito baixa
                 recorteDesencontro = 0
@@ -685,6 +605,458 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               return placas
             })()}
             
+            {/* Placas Drywall - Lado A2 (espelhamento horizontal exato do Lado B) */}
+            {ladoAtivo === 'A2' && parede.especificacoes.chapasPorLado === 'quadruplo' && (() => {
+              const placas: JSX.Element[] = []
+              
+              // Usar exatamente a mesma lógica do Lado B
+              const PLACA_LARGURA = 1.2 // metros - sempre 1,20m
+              const PLACA_ALTURA = parseFloat(parede.especificacoes.tipoChapa) // 1,80m ou 2,40m
+              
+              // Converter para pixels
+              const placaLarguraPx = PLACA_LARGURA * finalScale
+              const placaAlturaPx = PLACA_ALTURA * finalScale
+              
+              // LÓGICA IDÊNTICA AO LADO B
+              const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
+              const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
+              
+              // ESTRATÉGIA IDÊNTICA AO LADO B
+              let recorteDesencontro = 0
+              
+              if (sobraAltura >= 0.6) {
+                recorteDesencontro = sobraAltura
+              } else if (sobraAltura === 0 && placasInteirasNaAltura >= 2) {
+                recorteDesencontro = PLACA_ALTURA / 2
+              } else if (sobraAltura > 0 && sobraAltura < 0.6) {
+                recorteDesencontro = sobraAltura
+              } else {
+                recorteDesencontro = 0
+              }
+              
+              const numFaixas = Math.ceil(parede.largura / PLACA_LARGURA)
+              
+              // Função IDÊNTICA AO LADO B
+              const desenharFaixaA2 = (indexFaixa: number) => {
+                const xFaixa = indexFaixa * PLACA_LARGURA
+                const larguraRestante = parede.largura - xFaixa
+                const larguraFaixa = Math.min(PLACA_LARGURA, larguraRestante)
+                
+                if (larguraFaixa <= 0) return
+                
+                const xFaixaPx = xFaixa * finalScale
+                const larguraFaixaPx = larguraFaixa * finalScale
+                
+                // LÓGICA IDÊNTICA: Faixas ímpares (0, 2, 4...): recorte embaixo
+                const ehFaixaImpar = indexFaixa % 2 === 0
+                
+                if (ehFaixaImpar && recorteDesencontro > 0) {
+                  // FAIXA ÍMPAR: recorte embaixo + placas inteiras encima
+                  
+                  // Recorte embaixo
+                  const alturaRecortePx = recorteDesencontro * finalScale
+                  placas.push(
+                    <g key={`faixaA2-${indexFaixa}-embaixo`}>
+                      <rect
+                        x={xFaixaPx}
+                        y={finalHeight - alturaRecortePx}
+                        width={larguraFaixaPx}
+                        height={alturaRecortePx}
+                        fill="url(#chapa-pattern)"
+                        stroke="#6b7280"
+                        strokeWidth="1"
+                        opacity="0.8"
+                      />
+                      <rect
+                        x={xFaixaPx}
+                        y={finalHeight - alturaRecortePx}
+                        width={larguraFaixaPx}
+                        height={alturaRecortePx}
+                        fill="none"
+                        stroke="#2563eb"
+                        strokeWidth="2"
+                        strokeDasharray="4,4"
+                      />
+                    </g>
+                  )
+                  
+                  // Placas inteiras encima
+                  const alturaRestante = parede.altura - recorteDesencontro
+                  let yAtual = 0
+                  let placaIndex = 0
+                  let alturaProcessada = 0
+                  
+                  while (alturaProcessada < alturaRestante) {
+                    const alturaPlaca = Math.min(PLACA_ALTURA, alturaRestante - alturaProcessada)
+                    const alturaPlacaPx = alturaPlaca * finalScale
+                    
+                    placas.push(
+                      <g key={`faixaA2-${indexFaixa}-encima-${placaIndex}`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={yAtual}
+                          width={larguraFaixaPx}
+                          height={alturaPlacaPx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={yAtual}
+                          width={larguraFaixaPx}
+                          height={alturaPlacaPx}
+                          fill="none"
+                          stroke="#2563eb"
+                          strokeWidth="2"
+                          strokeDasharray="4,4"
+                        />
+                      </g>
+                    )
+                    
+                    yAtual += alturaPlacaPx
+                    alturaProcessada += alturaPlaca
+                    placaIndex++
+                  }
+                } else {
+                  // FAIXA PAR ou sem desencontro: placas inteiras embaixo + recorte encima
+                  let alturaColocada = 0
+                  let placaIndex = 0
+                  
+                  const alturaDisponivel = parede.altura - recorteDesencontro
+                  while (alturaColocada + PLACA_ALTURA <= alturaDisponivel && alturaDisponivel > 0) {
+                    const yPlaca = finalHeight - (alturaColocada + PLACA_ALTURA) * finalScale
+                    
+                    placas.push(
+                      <g key={`faixaA2-${indexFaixa}-embaixo-${placaIndex}`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={yPlaca}
+                          width={larguraFaixaPx}
+                          height={placaAlturaPx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={yPlaca}
+                          width={larguraFaixaPx}
+                          height={placaAlturaPx}
+                          fill="none"
+                          stroke="#2563eb"
+                          strokeWidth="2"
+                          strokeDasharray="4,4"
+                        />
+                      </g>
+                    )
+                    
+                    alturaColocada += PLACA_ALTURA
+                    placaIndex++
+                  }
+                  
+                  // Recorte encima (se houver desencontro)
+                  if (recorteDesencontro > 0) {
+                    const alturaRecortePx = recorteDesencontro * finalScale
+                    placas.push(
+                      <g key={`faixaA2-${indexFaixa}-encima`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRecortePx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRecortePx}
+                          fill="none"
+                          stroke="#2563eb"
+                          strokeWidth="2"
+                          strokeDasharray="4,4"
+                        />
+                      </g>
+                    )
+                  }
+                  
+                  // Se não há desencontro mas sobra altura, preencher com recorte no topo
+                  const alturaRestante = parede.altura - alturaColocada
+                  if (alturaRestante > 0 && recorteDesencontro === 0) {
+                    const alturaRestantePx = alturaRestante * finalScale
+                    placas.push(
+                      <g key={`faixaA2-${indexFaixa}-topo`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRestantePx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRestantePx}
+                          fill="none"
+                          stroke="#2563eb"
+                          strokeWidth="2"
+                          strokeDasharray="4,4"
+                        />
+                      </g>
+                    )
+                  }
+                }
+              }
+              
+              // Desenhar todas as faixas e aplicar espelhamento horizontal
+              for (let i = 0; i < numFaixas; i++) {
+                desenharFaixaA2(i)
+              }
+              
+              // Aplicar transformação de espelhamento horizontal (flip 180°)
+              return (
+                <g transform={`scale(-1, 1) translate(-${finalWidth}, 0)`}>
+                  {placas}
+                </g>
+              )
+            })()}
+            
+            {/* Placas Drywall - Lado B2 (rotação 180° vertical do lado A2) */}
+            {ladoAtivo === 'B2' && parede.especificacoes.chapasPorLado === 'quadruplo' && (() => {
+              const placas: JSX.Element[] = []
+              
+              // Usar exatamente a mesma lógica do Lado A2 (que já é B espelhado horizontalmente)
+              const PLACA_LARGURA = 1.2 // metros - sempre 1,20m
+              const PLACA_ALTURA = parseFloat(parede.especificacoes.tipoChapa) // 1,80m ou 2,40m
+              
+              // Converter para pixels
+              const placaLarguraPx = PLACA_LARGURA * finalScale
+              const placaAlturaPx = PLACA_ALTURA * finalScale
+              
+              // LÓGICA IDÊNTICA AO LADO A2 (que é idêntica ao B)
+              const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
+              const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
+              
+              // ESTRATÉGIA IDÊNTICA AO LADO A2
+              let recorteDesencontro = 0
+              
+              if (sobraAltura >= 0.6) {
+                recorteDesencontro = sobraAltura
+              } else if (sobraAltura === 0 && placasInteirasNaAltura >= 2) {
+                recorteDesencontro = PLACA_ALTURA / 2
+              } else if (sobraAltura > 0 && sobraAltura < 0.6) {
+                recorteDesencontro = sobraAltura
+              } else {
+                recorteDesencontro = 0
+              }
+              
+              const numFaixas = Math.ceil(parede.largura / PLACA_LARGURA)
+              
+              // Função IDÊNTICA AO LADO A2
+              const desenharFaixaB2 = (indexFaixa: number) => {
+                const xFaixa = indexFaixa * PLACA_LARGURA
+                const larguraRestante = parede.largura - xFaixa
+                const larguraFaixa = Math.min(PLACA_LARGURA, larguraRestante)
+                
+                if (larguraFaixa <= 0) return
+                
+                const xFaixaPx = xFaixa * finalScale
+                const larguraFaixaPx = larguraFaixa * finalScale
+                
+                // LÓGICA IDÊNTICA: Faixas ímpares (0, 2, 4...): recorte embaixo
+                const ehFaixaImpar = indexFaixa % 2 === 0
+                
+                if (ehFaixaImpar && recorteDesencontro > 0) {
+                  // FAIXA ÍMPAR: recorte embaixo + placas inteiras encima
+                  
+                  // Recorte embaixo
+                  const alturaRecortePx = recorteDesencontro * finalScale
+                  placas.push(
+                    <g key={`faixaB2-${indexFaixa}-embaixo`}>
+                      <rect
+                        x={xFaixaPx}
+                        y={finalHeight - alturaRecortePx}
+                        width={larguraFaixaPx}
+                        height={alturaRecortePx}
+                        fill="url(#chapa-pattern)"
+                        stroke="#6b7280"
+                        strokeWidth="1"
+                        opacity="0.8"
+                      />
+                      <rect
+                        x={xFaixaPx}
+                        y={finalHeight - alturaRecortePx}
+                        width={larguraFaixaPx}
+                        height={alturaRecortePx}
+                        fill="none"
+                        stroke="#dc2626"
+                        strokeWidth="2"
+                        strokeDasharray="6,3"
+                      />
+                    </g>
+                  )
+                  
+                  // Placas inteiras encima
+                  const alturaRestante = parede.altura - recorteDesencontro
+                  let yAtual = 0
+                  let placaIndex = 0
+                  let alturaProcessada = 0
+                  
+                  while (alturaProcessada < alturaRestante) {
+                    const alturaPlaca = Math.min(PLACA_ALTURA, alturaRestante - alturaProcessada)
+                    const alturaPlacaPx = alturaPlaca * finalScale
+                    
+                    placas.push(
+                      <g key={`faixaB2-${indexFaixa}-encima-${placaIndex}`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={yAtual}
+                          width={larguraFaixaPx}
+                          height={alturaPlacaPx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={yAtual}
+                          width={larguraFaixaPx}
+                          height={alturaPlacaPx}
+                          fill="none"
+                          stroke="#dc2626"
+                          strokeWidth="2"
+                          strokeDasharray="6,3"
+                        />
+                      </g>
+                    )
+                    
+                    yAtual += alturaPlacaPx
+                    alturaProcessada += alturaPlaca
+                    placaIndex++
+                  }
+                } else {
+                  // FAIXA PAR ou sem desencontro: placas inteiras embaixo + recorte encima
+                  let alturaColocada = 0
+                  let placaIndex = 0
+                  
+                  const alturaDisponivel = parede.altura - recorteDesencontro
+                  while (alturaColocada + PLACA_ALTURA <= alturaDisponivel && alturaDisponivel > 0) {
+                    const yPlaca = finalHeight - (alturaColocada + PLACA_ALTURA) * finalScale
+                    
+                    placas.push(
+                      <g key={`faixaB2-${indexFaixa}-embaixo-${placaIndex}`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={yPlaca}
+                          width={larguraFaixaPx}
+                          height={placaAlturaPx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={yPlaca}
+                          width={larguraFaixaPx}
+                          height={placaAlturaPx}
+                          fill="none"
+                          stroke="#dc2626"
+                          strokeWidth="2"
+                          strokeDasharray="6,3"
+                        />
+                      </g>
+                    )
+                    
+                    alturaColocada += PLACA_ALTURA
+                    placaIndex++
+                  }
+                  
+                  // Recorte encima (se houver desencontro)
+                  if (recorteDesencontro > 0) {
+                    const alturaRecortePx = recorteDesencontro * finalScale
+                    placas.push(
+                      <g key={`faixaB2-${indexFaixa}-encima`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRecortePx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRecortePx}
+                          fill="none"
+                          stroke="#dc2626"
+                          strokeWidth="2"
+                          strokeDasharray="6,3"
+                        />
+                      </g>
+                    )
+                  }
+                  
+                  // Se não há desencontro mas sobra altura, preencher com recorte no topo
+                  const alturaRestante = parede.altura - alturaColocada
+                  if (alturaRestante > 0 && recorteDesencontro === 0) {
+                    const alturaRestantePx = alturaRestante * finalScale
+                    placas.push(
+                      <g key={`faixaB2-${indexFaixa}-topo`}>
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRestantePx}
+                          fill="url(#chapa-pattern)"
+                          stroke="#6b7280"
+                          strokeWidth="1"
+                          opacity="0.8"
+                        />
+                        <rect
+                          x={xFaixaPx}
+                          y={0}
+                          width={larguraFaixaPx}
+                          height={alturaRestantePx}
+                          fill="none"
+                          stroke="#dc2626"
+                          strokeWidth="2"
+                          strokeDasharray="6,3"
+                        />
+                      </g>
+                    )
+                  }
+                }
+              }
+              
+              // Desenhar todas as faixas
+              for (let i = 0; i < numFaixas; i++) {
+                desenharFaixaB2(i)
+              }
+              
+              // Aplicar primeiro espelhamento horizontal (como A2) e depois rotação vertical 180°
+              return (
+                <g transform={`scale(-1, -1) translate(-${finalWidth}, -${finalHeight})`}>
+                  {placas}
+                </g>
+              )
+            })()}
+            
             {/* Vãos (portas e janelas) */}
             {vaos.map((vao, index) => (
               <g key={index}>
@@ -749,8 +1121,8 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               // Calcular juntas horizontais baseadas no lado ativo
               const PLACA_ALTURA = parseFloat(parede.especificacoes.tipoChapa)
               
-              if (ladoAtivo === 'A' || parede.especificacoes.chapasPorLado === 'simples') {
-                // LADO A: Juntas padrão (múltiplos da altura da chapa)
+              if (ladoAtivo === 'A' || ladoAtivo === 'A2' || parede.especificacoes.chapasPorLado === 'simples') {
+                // LADO A/A2: Juntas padrão (múltiplos da altura da chapa)
                 const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
                 
                 for (let nivel = 1; nivel <= placasInteirasNaAltura; nivel++) {
@@ -798,29 +1170,17 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                   }
                 }
               } else {
-                // LADO B: Juntas desencontradas baseadas no padrão do desencontro
+                // LADO B/B2: Juntas desencontradas baseadas no padrão do desencontro
                 const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
                 const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
                 
-                // Calcular recorte de desencontro (mesmo cálculo do Lado B)
-                const ESPACAMENTO_ESTRUTURA = (() => {
-                  const tipoMontante = parseInt(parede.especificacoes.tipoMontante)
-                  if (tipoMontante === 48) return 0.4
-                  else if (tipoMontante === 70) return parede.altura > 3.0 ? 0.4 : 0.6
-                  else if (tipoMontante === 90) return 0.6
-                  else return 0.6
-                })()
-                
+                // Calcular recorte de desencontro (lógica simplificada)
                 let recorteDesencontro = 0
-                if (sobraAltura >= ESPACAMENTO_ESTRUTURA) {
+                if (sobraAltura >= 0.6) {
                   recorteDesencontro = sobraAltura
                 } else if (sobraAltura === 0 && placasInteirasNaAltura >= 2) {
-                  if (ESPACAMENTO_ESTRUTURA === 0.4) {
-                    recorteDesencontro = placasInteirasNaAltura >= 4 ? 0.8 : 0.4
-                  } else {
-                    recorteDesencontro = placasInteirasNaAltura >= 3 ? 1.2 : 0.6
-                  }
-                } else if (sobraAltura > 0 && sobraAltura < ESPACAMENTO_ESTRUTURA) {
+                  recorteDesencontro = PLACA_ALTURA / 2 // 0,90m para 1,80m ou 1,20m para 2,40m
+                } else if (sobraAltura > 0 && sobraAltura < 0.6) {
                   recorteDesencontro = sobraAltura
                 } else {
                   recorteDesencontro = 0
@@ -1025,17 +1385,17 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
       {/* Legenda */}
       <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
         <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-gray-700"></div>
-          <span className="text-gray-600">Perfis Metálicos</span>
-        </div>
-        <div className="flex items-center space-x-2">
           <div className="w-4 h-4 bg-gray-100 border border-gray-400"></div>
           <span className="text-gray-600">Chapas Drywall</span>
         </div>
-        {parede.especificacoes.incluirIsolamento && (
+        {parede.especificacoes.tratamentoAcustico !== 'nenhum' && (
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 bg-yellow-200"></div>
-            <span className="text-gray-600">Isolamento</span>
+            <span className="text-gray-600">
+              {parede.especificacoes.tratamentoAcustico === 'la_pet' && 'Lã de Pet'}
+              {parede.especificacoes.tratamentoAcustico === 'la_vidro' && 'Lã de Vidro'}
+              {parede.especificacoes.tratamentoAcustico === 'la_rocha' && 'Lã de Rocha'}
+            </span>
           </div>
         )}
         {(parede.vaos.porta.tipo !== 'nenhuma' || parede.vaos.janelas.quantidade > 0) && (
@@ -1049,9 +1409,6 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
       {/* Informações técnicas */}
       <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <div>
-            <strong>Estrutura:</strong> Montantes a cada {(espacamentoMontanteReal * 100).toFixed(0)}cm
-          </div>
           <div>
             <strong>Placas:</strong> 1,20×{parede.especificacoes.tipoChapa}m (Chapeamento {parede.especificacoes.chapasPorLado})
           </div>

@@ -10,8 +10,9 @@ export interface MedidaParede {
   especificacoes: {
     tipoChapa: '1.80' | '2.40'
     tipoMontante: '48' | '70' | '90'
+    espacamentoMontante: '0.30' | '0.40' | '0.60'
     chapasPorLado: 'simples' | 'duplo' | 'quadruplo'
-    incluirIsolamento: boolean
+    tratamentoAcustico: 'nenhum' | 'la_pet' | 'la_vidro' | 'la_rocha'
     preenchido: boolean
   }
   vaos: {

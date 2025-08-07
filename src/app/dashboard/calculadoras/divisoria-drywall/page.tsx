@@ -33,8 +33,9 @@ interface Medida {
   especificacoes: {
     tipoChapa: '1.80' | '2.40'
     tipoMontante: '48' | '70' | '90'
+    espacamentoMontante: '0.30' | '0.40' | '0.60'
     chapasPorLado: 'simples' | 'duplo' | 'quadruplo'
-    incluirIsolamento: boolean
+    tratamentoAcustico: 'nenhum' | 'la_pet' | 'la_vidro' | 'la_rocha'
     preenchido: boolean
   }
   vaos: {
@@ -53,15 +54,16 @@ interface Medida {
 }
 
 export default function DivisoriaDrywallPage() {
-  const [modalidade, setModalidade] = useState<'abnt' | 'basica'>('abnt')
+  const [modalidade, setModalidade] = useState<'abnt' | 'basica'>('basica')
   const [activeTab, setActiveTab] = useState<'medidas' | 'desenho' | 'materiais'>('medidas')
   const [searchTerm, setSearchTerm] = useState('')
   const [modalAberto, setModalAberto] = useState<{tipo: 'especificacoes' | 'vaos' | null, medidaId: string | null}>({tipo: null, medidaId: null})
   const [especificacoesPadrao, setEspecificacoesPadrao] = useState<{
     tipoChapa: '1.80' | '2.40'
     tipoMontante: '48' | '70' | '90'
+    espacamentoMontante: '0.30' | '0.40' | '0.60'
     chapasPorLado: 'simples' | 'duplo' | 'quadruplo'
-    incluirIsolamento: boolean
+    tratamentoAcustico: 'nenhum' | 'la_pet' | 'la_vidro' | 'la_rocha'
   } | null>(null)
   const [resultadoCalculo, setResultadoCalculo] = useState<ResultadoCalculoDrywall | null>(null)
   const [calculadora] = useState(new DrywallCalculator())
@@ -75,9 +77,10 @@ export default function DivisoriaDrywallPage() {
       area: 0,
       especificacoes: {
         tipoChapa: '1.80' as const,
-        tipoMontante: '48' as const,
+        tipoMontante: '70' as const,
+        espacamentoMontante: '0.60' as const,
         chapasPorLado: 'duplo' as const,
-        incluirIsolamento: false,
+        tratamentoAcustico: 'nenhum' as const,
         preenchido: false
       },
       vaos: {
@@ -150,8 +153,9 @@ export default function DivisoriaDrywallPage() {
           especificacoes: {
             tipoChapa: medida.especificacoes.tipoChapa,
             tipoMontante: medida.especificacoes.tipoMontante,
+            espacamentoMontante: medida.especificacoes.espacamentoMontante,
             chapasPorLado: medida.especificacoes.chapasPorLado,
-            incluirIsolamento: medida.especificacoes.incluirIsolamento,
+            tratamentoAcustico: medida.especificacoes.tratamentoAcustico,
             preenchido: medida.especificacoes.preenchido
           },
           vaos: {
@@ -197,14 +201,16 @@ export default function DivisoriaDrywallPage() {
       especificacoes: especificacoesPadrao ? {
         tipoChapa: especificacoesPadrao.tipoChapa,
         tipoMontante: especificacoesPadrao.tipoMontante,
+        espacamentoMontante: especificacoesPadrao.espacamentoMontante,
         chapasPorLado: especificacoesPadrao.chapasPorLado,
-        incluirIsolamento: especificacoesPadrao.incluirIsolamento,
+        tratamentoAcustico: especificacoesPadrao.tratamentoAcustico,
         preenchido: true // Já vem preenchida com o padrão
       } : {
         tipoChapa: '1.80' as const,
-        tipoMontante: '48' as const,
+        tipoMontante: '70' as const,
+        espacamentoMontante: '0.60' as const,
         chapasPorLado: 'duplo' as const,
-        incluirIsolamento: false,
+        tratamentoAcustico: 'nenhum' as const,
         preenchido: false
       },
       vaos: {
@@ -276,8 +282,9 @@ export default function DivisoriaDrywallPage() {
     const igualPadrao = 
       medida.especificacoes.tipoChapa === especificacoesPadrao.tipoChapa &&
       medida.especificacoes.tipoMontante === especificacoesPadrao.tipoMontante &&
+      medida.especificacoes.espacamentoMontante === especificacoesPadrao.espacamentoMontante &&
       medida.especificacoes.chapasPorLado === especificacoesPadrao.chapasPorLado &&
-      medida.especificacoes.incluirIsolamento === especificacoesPadrao.incluirIsolamento
+      medida.especificacoes.tratamentoAcustico === especificacoesPadrao.tratamentoAcustico
 
     return igualPadrao 
       ? 'bg-green-500 text-white'  // Verde - tem informações (padrão)
@@ -347,33 +354,7 @@ export default function DivisoriaDrywallPage() {
         <div className="flex-1 p-6">
           <div className="max-w-4xl mx-auto">
             {/* Cards de Informação */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6 text-center">
-                <Settings className="h-8 w-8 text-primary-600 mx-auto mb-3" />
-                <div className="text-sm text-gray-600 mb-3">Modalidade de Cálculo</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setModalidade('abnt')}
-                    className={`px-3 py-2 text-xs font-medium rounded transition-colors ${
-                      modalidade === 'abnt'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    ABNT
-                  </button>
-                  <button
-                    onClick={() => setModalidade('basica')}
-                    className={`px-3 py-2 text-xs font-medium rounded transition-colors ${
-                      modalidade === 'basica'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    BÁSICA
-                  </button>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow p-6 text-center">
                 <Ruler className="h-8 w-8 text-orange-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Área Total</div>
@@ -511,8 +492,9 @@ export default function DivisoriaDrywallPage() {
                                       ? "🟢 Especificações - Configurada"
                                       : medida.especificacoes.tipoChapa === especificacoesPadrao.tipoChapa &&
                                         medida.especificacoes.tipoMontante === especificacoesPadrao.tipoMontante &&
+                                        medida.especificacoes.espacamentoMontante === especificacoesPadrao.espacamentoMontante &&
                                         medida.especificacoes.chapasPorLado === especificacoesPadrao.chapasPorLado &&
-                                        medida.especificacoes.incluirIsolamento === especificacoesPadrao.incluirIsolamento
+                                        medida.especificacoes.tratamentoAcustico === especificacoesPadrao.tratamentoAcustico
                                         ? "🟢 Especificações - Padrão do projeto"
                                         : "🟡 Especificações - Modificada/Personalizada"
                                 }
@@ -643,9 +625,6 @@ export default function DivisoriaDrywallPage() {
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
                             <h3 className="font-semibold text-blue-900">Resumo do Cálculo</h3>
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              Modalidade: {resultadoCalculo.modalidade.toUpperCase()}
-                            </span>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div className="text-center">
@@ -803,8 +782,9 @@ export default function DivisoriaDrywallPage() {
                   {medida.especificacoes.preenchido && especificacoesPadrao && (
                     <div className="text-sm text-gray-600 mt-1">
                       {medida.especificacoes.tipoMontante === especificacoesPadrao.tipoMontante &&
+                       medida.especificacoes.espacamentoMontante === especificacoesPadrao.espacamentoMontante &&
                        medida.especificacoes.chapasPorLado === especificacoesPadrao.chapasPorLado &&
-                       medida.especificacoes.incluirIsolamento === especificacoesPadrao.incluirIsolamento
+                       medida.especificacoes.tratamentoAcustico === especificacoesPadrao.tratamentoAcustico
                         ? "🟢 Usando especificações padrão do projeto"
                         : "🟡 Especificações modificadas"}
                     </div>
@@ -826,8 +806,9 @@ export default function DivisoriaDrywallPage() {
                 {especificacoesPadrao && (
                   medida.especificacoes.tipoChapa !== especificacoesPadrao.tipoChapa ||
                   medida.especificacoes.tipoMontante !== especificacoesPadrao.tipoMontante ||
+                  medida.especificacoes.espacamentoMontante !== especificacoesPadrao.espacamentoMontante ||
                   medida.especificacoes.chapasPorLado !== especificacoesPadrao.chapasPorLado ||
-                  medida.especificacoes.incluirIsolamento !== especificacoesPadrao.incluirIsolamento
+                  medida.especificacoes.tratamentoAcustico !== especificacoesPadrao.tratamentoAcustico
                 ) && (
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex items-center justify-between">
@@ -839,8 +820,9 @@ export default function DivisoriaDrywallPage() {
                           atualizarMedida(medida.id, 'especificacoes', {
                             tipoChapa: especificacoesPadrao.tipoChapa,
                             tipoMontante: especificacoesPadrao.tipoMontante,
+                            espacamentoMontante: especificacoesPadrao.espacamentoMontante,
                             chapasPorLado: especificacoesPadrao.chapasPorLado,
-                            incluirIsolamento: especificacoesPadrao.incluirIsolamento
+                            tratamentoAcustico: especificacoesPadrao.tratamentoAcustico
                           })
                         }}
                         className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
@@ -862,18 +844,6 @@ export default function DivisoriaDrywallPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Montante</label>
-                  <select 
-                    className="input-field"
-                    value={medida.especificacoes.tipoMontante}
-                    onChange={(e) => atualizarMedida(medida.id, 'especificacoes', { tipoMontante: e.target.value })}
-                  >
-                    <option value="48">48mm (Padrão)</option>
-                    <option value="70">70mm (Reforçado)</option>
-                    <option value="90">90mm (Extra Reforçado)</option>
-                  </select>
-                </div>
-                <div>
                   <label className="block text-sm text-gray-600 mb-1">Chapeamento</label>
                   <select 
                     className="input-field"
@@ -886,15 +856,41 @@ export default function DivisoriaDrywallPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-gray-300"
-                      checked={medida.especificacoes.incluirIsolamento}
-                      onChange={(e) => atualizarMedida(medida.id, 'especificacoes', { incluirIsolamento: e.target.checked })}
-                    />
-                    <span className="text-sm text-gray-600">Incluir isolamento acústico</span>
-                  </label>
+                  <label className="block text-sm text-gray-600 mb-1">Montante</label>
+                  <select 
+                    className="input-field"
+                    value={medida.especificacoes.tipoMontante}
+                    onChange={(e) => atualizarMedida(medida.id, 'especificacoes', { tipoMontante: e.target.value })}
+                  >
+                    <option value="48">48mm</option>
+                    <option value="70">70mm</option>
+                    <option value="90">90mm</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Espaçamento dos Montantes</label>
+                  <select 
+                    className="input-field"
+                    value={medida.especificacoes.espacamentoMontante}
+                    onChange={(e) => atualizarMedida(medida.id, 'especificacoes', { espacamentoMontante: e.target.value })}
+                  >
+                    <option value="0.30">30cm</option>
+                    <option value="0.40">40cm</option>
+                    <option value="0.60">60cm</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Tratamento Acústico</label>
+                  <select 
+                    className="input-field"
+                    value={medida.especificacoes.tratamentoAcustico}
+                    onChange={(e) => atualizarMedida(medida.id, 'especificacoes', { tratamentoAcustico: e.target.value })}
+                  >
+                    <option value="nenhum">Nenhum</option>
+                    <option value="la_pet">Lã de Pet</option>
+                    <option value="la_vidro">Lã de Vidro</option>
+                    <option value="la_rocha">Lã de Rocha</option>
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end space-x-3 mt-6">
@@ -914,8 +910,9 @@ export default function DivisoriaDrywallPage() {
                       setEspecificacoesPadrao({
                         tipoChapa: medida.especificacoes.tipoChapa,
                         tipoMontante: medida.especificacoes.tipoMontante,
+                        espacamentoMontante: medida.especificacoes.espacamentoMontante,
                         chapasPorLado: medida.especificacoes.chapasPorLado,
-                        incluirIsolamento: medida.especificacoes.incluirIsolamento
+                        tratamentoAcustico: medida.especificacoes.tratamentoAcustico
                       })
                     }
                     
