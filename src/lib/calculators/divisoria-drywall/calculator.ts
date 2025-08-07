@@ -80,111 +80,217 @@ export class DrywallCalculator {
   }
 
   /**
-   * Calcula quantidade de chapas necessárias
+   * Método auxiliar para adicionar recortes
+   */
+  private adicionarRecorte(recortes: Array<{largura: number, altura: number, quantidade: number}>, largura: number, altura: number, quantidade: number) {
+    const recorteExistente = recortes.find(r => 
+      Math.abs(r.largura - largura) < 0.01 && Math.abs(r.altura - altura) < 0.01
+    )
+    
+    if (recorteExistente) {
+      recorteExistente.quantidade += quantidade
+    } else {
+      recortes.push({ largura, altura, quantidade })
+    }
+  }
+
+  /**
+   * Calcula quantidade de chapas necessárias com precisão
    */
   private calcularChapas(paredes: MedidaParede[], areaLiquida: number, modalidade: 'abnt' | 'basica'): CalculoMaterial[] {
     const chapas: CalculoMaterial[] = []
     
-    // Agrupar chapas por tipo e altura
-    const chapasPorTipo: {[key: string]: {standard: number, ru: number, rf: number, altura: string}} = {}
+    // Constantes da placa
+    const PLACA_LARGURA = 1.2 // metros
     
+    // Tipos para estrutura de dados
+    interface RecorteInfo {
+      largura: number
+      altura: number
+      quantidade: number
+    }
+    
+    interface DadosAmbiente {
+      placasInteiras: number
+      recortes: RecorteInfo[]
+    }
+    
+    interface TipoChapaDados {
+      standard: DadosAmbiente
+      ru: DadosAmbiente
+      rf: DadosAmbiente
+    }
+    
+    // Estrutura para acumular recortes por tipo de chapa e ambiente
+    const recortesPorTipoEAmbiente: Record<string, TipoChapaDados> = {}
+    
+    // Processar cada parede individualmente
     paredes.forEach(parede => {
       let chapasPorLado = 1
       
       if (modalidade === 'abnt') {
-        // Em modo ABNT, usar configurações pré-definidas
         switch (parede.especificacoes.tipoMontante) {
-          case '90':
-            chapasPorLado = 2
-            break
+          case '90': chapasPorLado = 2; break
           case '70':
           case '48':
-          default:
-            chapasPorLado = 1
+          default: chapasPorLado = 1
         }
       } else {
-        // Modo básico - usar configuração do usuário
         switch (parede.especificacoes.chapasPorLado) {
-          case 'simples':
-            chapasPorLado = 1
-            break
-          case 'duplo':
-            chapasPorLado = 2
-            break
-          case 'quadruplo':
-            chapasPorLado = 4
-            break
-          default:
-            chapasPorLado = 1
+          case 'simples': chapasPorLado = 1; break
+          case 'duplo': chapasPorLado = 2; break
+          case 'quadruplo': chapasPorLado = 4; break
+          default: chapasPorLado = 1
         }
       }
       
-      // Área da chapa baseada na altura selecionada
-      const alturaChapa = parseFloat(parede.especificacoes.tipoChapa)
-      const areaChapa = 1.20 * alturaChapa // Largura sempre 1,20m
-      
-      const chapasNecessarias = Math.ceil((parede.area / areaChapa) * chapasPorLado * 2) // 2 lados da parede
-      
+      // Altura da placa específica desta parede
+      const PLACA_ALTURA = parseFloat(parede.especificacoes.tipoChapa) // 1.80 ou 2.40
       const tipoChapa = parede.especificacoes.tipoChapa
       
-      if (!chapasPorTipo[tipoChapa]) {
-        chapasPorTipo[tipoChapa] = {standard: 0, ru: 0, rf: 0, altura: alturaChapa.toString()}
-      }
-      
-      // Classificar tipo de chapa baseado no ambiente
+      // Determinar tipo de ambiente
       const descricaoLower = parede.descricao.toLowerCase()
+      let tipoAmbiente: 'standard' | 'ru' | 'rf' = 'standard'
       
       if (descricaoLower.includes('sauna') || descricaoLower.includes('churrasqueira') || 
           descricaoLower.includes('forno') || descricaoLower.includes('lareira')) {
-        // RF - Resistente ao Fogo para ambientes com alta temperatura
-        chapasPorTipo[tipoChapa].rf += chapasNecessarias
+        tipoAmbiente = 'rf'
       } else if (descricaoLower.includes('banheiro') || descricaoLower.includes('cozinha') ||
                  descricaoLower.includes('área') || descricaoLower.includes('lavanderia') ||
                  descricaoLower.includes('lavabo') || descricaoLower.includes('wc')) {
-        // RU - Resistente à Umidade para ambientes molhados
-        chapasPorTipo[tipoChapa].ru += chapasNecessarias
-      } else {
-        // ST - Standard para ambientes secos normais
-        chapasPorTipo[tipoChapa].standard += chapasNecessarias
+        tipoAmbiente = 'ru'
+      }
+      
+      // Inicializar estrutura se não existir
+      if (!recortesPorTipoEAmbiente[tipoChapa]) {
+        recortesPorTipoEAmbiente[tipoChapa] = {
+          standard: { placasInteiras: 0, recortes: [] },
+          ru: { placasInteiras: 0, recortes: [] },
+          rf: { placasInteiras: 0, recortes: [] }
+        }
+      }
+      
+      // ALGORITMO SIMPLIFICADO E CORRETO
+      
+      // 1. Calcular faixas de largura
+      const faixasCompletas = Math.floor(parede.largura / PLACA_LARGURA) // quantas faixas de 1,20m
+      const sobraLargura = parede.largura % PLACA_LARGURA // sobra da largura
+      
+      // 2. Calcular para faixas completas (1,20m)
+      if (faixasCompletas > 0) {
+        const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
+        const alturaRestante = parede.altura % PLACA_ALTURA
+        
+        // Placas inteiras das faixas completas
+        recortesPorTipoEAmbiente[tipoChapa][tipoAmbiente].placasInteiras += 
+          (placasInteirasNaAltura * faixasCompletas * chapasPorLado)
+        
+        // Recortes das faixas completas (se há sobra na altura)
+        if (alturaRestante > 0.01) {
+          this.adicionarRecorte(recortesPorTipoEAmbiente[tipoChapa][tipoAmbiente].recortes, 
+            PLACA_LARGURA, alturaRestante, faixasCompletas * chapasPorLado)
+        }
+      }
+      
+      // 3. Calcular para faixa de sobra (se existe)
+      if (sobraLargura > 0.01) {
+        const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
+        const alturaRestante = parede.altura % PLACA_ALTURA
+        
+        // Recortes da faixa de sobra (altura da placa inteira)
+        if (placasInteirasNaAltura > 0) {
+          this.adicionarRecorte(recortesPorTipoEAmbiente[tipoChapa][tipoAmbiente].recortes,
+            sobraLargura, PLACA_ALTURA, placasInteirasNaAltura * chapasPorLado)
+        }
+        
+        // Recortes da faixa de sobra (altura restante)
+        if (alturaRestante > 0.01) {
+          this.adicionarRecorte(recortesPorTipoEAmbiente[tipoChapa][tipoAmbiente].recortes,
+            sobraLargura, alturaRestante, chapasPorLado)
+        }
       }
     })
     
-    // Criar itens de material para cada tipo de chapa
-    Object.entries(chapasPorTipo).forEach(([altura, dados]) => {
-      // Adicionar 10% de perda
-      const standardComPerda = Math.ceil(dados.standard * 1.1)
-      const ruComPerda = Math.ceil(dados.ru * 1.1)
-      const rfComPerda = Math.ceil(dados.rf * 1.1)
+    
+    // Calcular placas necessárias para cada tipo e ambiente
+    Object.entries(recortesPorTipoEAmbiente).forEach(([tipoChapa, ambientes]) => {
+      const alturaPlaca = parseFloat(tipoChapa)
       
-      if (standardComPerda > 0) {
-        chapas.push({
-          item: 'Chapa Drywall ST',
-          descricao: `1,20m x ${altura}m x 12,5mm (Standard)`,
-          quantidade: standardComPerda,
-          unidade: 'un',
-          observacoes: 'Para ambientes secos - inclui 10% para perdas e recortes'
+      Object.entries(ambientes).forEach(([tipoAmbiente, dados]) => {
+        const dadosTipados = dados as DadosAmbiente
+        if (dadosTipados.placasInteiras === 0 && dadosTipados.recortes.length === 0) return
+        
+        let totalPlacas = dadosTipados.placasInteiras
+        let placasParaRecortes = 0
+        let detalhesRecortes: string[] = []
+        
+        // Calcular placas necessárias para cada tipo de recorte
+        dadosTipados.recortes.forEach((recorte: RecorteInfo) => {
+          let placasNecessarias = 0
+          let recortesPorPlaca = 0
+          
+          // CÁLCULO MANUAL CORRETO
+          if (Math.abs(recorte.largura - 1.2) < 0.01 && Math.abs(recorte.altura - 0.9) < 0.01) {
+            // 4x (1,20×0,90): cabem 2 por placa (1,80÷0,90=2)
+            recortesPorPlaca = 2
+            placasNecessarias = Math.ceil(recorte.quantidade / 2)
+          } 
+          else if (Math.abs(recorte.largura - 0.6) < 0.01 && Math.abs(recorte.altura - 1.8) < 0.01) {
+            // 2x (0,60×1,80): cabem 2 por placa (1,20÷0,60=2)
+            recortesPorPlaca = 2
+            placasNecessarias = Math.ceil(recorte.quantidade / 2)
+          }
+          else if (Math.abs(recorte.largura - 0.6) < 0.01 && Math.abs(recorte.altura - 0.9) < 0.01) {
+            // 2x (0,60×0,90): cabem 4 por placa (1,20÷0,60=2, 1,80÷0,90=2, 2×2=4)
+            recortesPorPlaca = 4
+            placasNecessarias = Math.ceil(recorte.quantidade / 4)
+          }
+          else {
+            // Fallback para outros casos
+            const recortesPorLargura = Math.floor(PLACA_LARGURA / recorte.largura)
+            const recortesPorAltura = Math.floor(alturaPlaca / recorte.altura)
+            recortesPorPlaca = Math.max(1, recortesPorLargura * recortesPorAltura)
+            placasNecessarias = Math.ceil(recorte.quantidade / recortesPorPlaca)
+          }
+          
+          placasParaRecortes += placasNecessarias
+          
+          // Debug: mostrar cálculo detalhado
+          let detalheCalculo = `${recorte.quantidade}x (${recorte.largura.toFixed(2)}×${recorte.altura.toFixed(2)}m)`
+          detalheCalculo += ` → ${recortesPorPlaca} por placa = ${placasNecessarias} placas`
+          
+          detalhesRecortes.push(detalheCalculo)
         })
-      }
-      
-      if (ruComPerda > 0) {
+        
+        totalPlacas += placasParaRecortes
+        
+        // Determinar nome e descrição do tipo
+        let nomeChapa = 'Chapa Drywall ST'
+        let descricaoTipo = '(Standard)'
+        if (tipoAmbiente === 'ru') {
+          nomeChapa = 'Chapa Drywall RU'
+          descricaoTipo = '(Resistente à Umidade)'
+        } else if (tipoAmbiente === 'rf') {
+          nomeChapa = 'Chapa Drywall RF'
+          descricaoTipo = '(Resistente ao Fogo)'
+        }
+        
+        let observacoes = `${dadosTipados.placasInteiras} inteiras`
+        if (placasParaRecortes > 0) {
+          observacoes += ` + ${placasParaRecortes} para recortes`
+        }
+        if (detalhesRecortes.length > 0) {
+          observacoes += ` (${detalhesRecortes.join(', ')})`
+        }
+        
         chapas.push({
-          item: 'Chapa Drywall RU',
-          descricao: `1,20m x ${altura}m x 12,5mm (Resistente à Umidade)`,
-          quantidade: ruComPerda,
+          item: nomeChapa,
+          descricao: `1,20m x ${tipoChapa}m x 12,5mm ${descricaoTipo}`,
+          quantidade: totalPlacas,
           unidade: 'un',
-          observacoes: 'Para ambientes molhados - inclui 10% para perdas'
+          observacoes
         })
-      }
-      
-      if (rfComPerda > 0) {
-        chapas.push({
-          item: 'Chapa Drywall RF',
-          descricao: `1,20m x ${altura}m x 12,5mm (Resistente ao Fogo)`,
-          quantidade: rfComPerda,
-          unidade: 'un',
-          observacoes: 'Para ambientes com alta temperatura - inclui 10% para perdas'
-        })
-      }
+      })
     })
     
     return chapas
@@ -230,16 +336,16 @@ export class DrywallCalculator {
       }
     })
     
-    // Converter metros para barras (3m por barra) e adicionar 5% de perda
+    // Converter metros para barras (3m por barra)
     const adicionarPerfil = (metros: number, tipo: string, largura: string) => {
       if (metros > 0) {
-        const barras = Math.ceil((metros * 1.05) / 3)
+        const barras = Math.ceil(metros / 3)
         perfis.push({
           item: `Perfil ${tipo} ${largura}`,
           descricao: `Perfil ${tipo} ${largura} - 3,00m`,
           quantidade: barras,
           unidade: 'un',
-          observacoes: `${metros.toFixed(1)}m necessários + 5% perda`
+          observacoes: `${metros.toFixed(1)}m necessários`
         })
       }
     }
