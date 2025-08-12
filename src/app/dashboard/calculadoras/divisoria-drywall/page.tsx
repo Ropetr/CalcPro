@@ -22,6 +22,9 @@ import {
 import Link from 'next/link'
 import { DrywallCalculator, type MedidaParede as MedidaParedeType, type ResultadoCalculoDrywall } from '@/lib/calculators/divisoria-drywall'
 import DrywallDrawing from '@/components/DrywallDrawing'
+import { useKeyboardNavigation } from '@/lib/ui-standards/navigation/useKeyboardNavigation'
+import { NavigationHelp } from '@/lib/ui-standards/navigation/components/NavigationHelp'
+import { autoCompleteDimension } from '@/lib/ui-standards/formatting/formatters'
 
 interface Medida {
   id: string
@@ -67,6 +70,20 @@ export default function DivisoriaDrywallPage() {
   } | null>(null)
   const [resultadoCalculo, setResultadoCalculo] = useState<ResultadoCalculoDrywall | null>(null)
   const [calculadora] = useState(new DrywallCalculator())
+  
+  // Sistema de navegação por teclado
+  const navigation = useKeyboardNavigation()
+  const { 
+    handleKeyDown,
+    addItem,
+    calculate 
+  } = navigation
+
+  // Função para formatação automática
+  const handleDimensionBlur = (field: string, value: string) => {
+    const formatted = autoCompleteDimension(value)
+    return formatted
+  }
   const [medidas, setMedidas] = useState<Medida[]>([
     {
       id: '1',
@@ -333,6 +350,7 @@ export default function DivisoriaDrywallPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              <NavigationHelp navigation={navigation} />
               <button className="btn-secondary flex items-center">
                 <FileText className="h-4 w-4 mr-2" />
                 Salvar Projeto
@@ -533,23 +551,33 @@ export default function DivisoriaDrywallPage() {
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
                             <input
-                              type="number"
-                              step="0.01"
+                              type="text"
                               value={medida.largura}
                               onChange={(e) => atualizarMedida(medida.id, 'largura', e.target.value)}
+                              onBlur={(e) => {
+                                const formatted = handleDimensionBlur('largura', e.target.value)
+                                atualizarMedida(medida.id, 'largura', formatted)
+                              }}
+                              onKeyDown={handleKeyDown}
                               className="input-field text-sm"
-                              placeholder="3.50"
+                              placeholder="3,50"
+                              data-nav-index={0}
                             />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">Altura (m)</label>
                             <input
-                              type="number"
-                              step="0.01"
+                              type="text"
                               value={medida.altura}
                               onChange={(e) => atualizarMedida(medida.id, 'altura', e.target.value)}
+                              onBlur={(e) => {
+                                const formatted = handleDimensionBlur('altura', e.target.value)
+                                atualizarMedida(medida.id, 'altura', formatted)
+                              }}
+                              onKeyDown={handleKeyDown}
                               className="input-field text-sm"
-                              placeholder="2.70"
+                              placeholder="2,70"
+                              data-nav-index={1}
                             />
                           </div>
                           <div>

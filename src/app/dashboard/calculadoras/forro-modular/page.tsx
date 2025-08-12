@@ -22,6 +22,9 @@ import Link from 'next/link'
 import { calcularPerfisMultiplosAmbientes, calcularPerfisT } from '@/lib/calculators/forro-modular/perfis'
 import { calcularCantoneirasMultiplosAmbientes, cantoneiraCalculator } from '@/lib/calculators/forro-modular/cantoneiras'
 import { calcularPlacas } from '@/lib/calculators/forro-modular/placas'
+import { useKeyboardNavigation } from '@/lib/ui-standards/navigation/useKeyboardNavigation'
+import { NavigationHelp } from '@/lib/ui-standards/navigation/components/NavigationHelp'
+import { autoCompleteDimension } from '@/lib/ui-standards/formatting/formatters'
 
 interface CalculationResult {
   placas: number
@@ -121,6 +124,20 @@ export default function ForroModularPage() {
     alturaPendural: string
     tipoEstrutura: string
   } | null>(null)
+  
+  // Sistema de navegação por teclado
+  const navigation = useKeyboardNavigation()
+  const { 
+    handleKeyDown,
+    addItem,
+    calculate 
+  } = navigation
+
+  // Função para formatação automática
+  const handleDimensionBlur = (field: string, value: string) => {
+    const formatted = autoCompleteDimension(value)
+    return formatted
+  }
   
   const [ambientes, setAmbientes] = useState<Ambiente[]>([
     {
@@ -889,6 +906,7 @@ export default function ForroModularPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              <NavigationHelp navigation={navigation} />
               <button className="btn-secondary flex items-center">
                 <FileText className="h-4 w-4 mr-2" />
                 Salvar Projeto
@@ -1231,6 +1249,7 @@ export default function ForroModularPage() {
                                   value={ambiente.largura}
                                   onChange={(e) => atualizarAmbiente(ambiente.id, 'largura', e.target.value)}
                                   onBlur={(e) => atualizarAmbiente(ambiente.id, 'largura', formatarNumero(e.target.value))}
+                                  onKeyDown={handleKeyDown}
                                   className="input-field text-sm"
                                   placeholder="3,50"
                                   data-field="largura"
@@ -1244,6 +1263,7 @@ export default function ForroModularPage() {
                                   value={ambiente.comprimento}
                                   onChange={(e) => atualizarAmbiente(ambiente.id, 'comprimento', e.target.value)}
                                   onBlur={(e) => atualizarAmbiente(ambiente.id, 'comprimento', formatarNumero(e.target.value))}
+                                  onKeyDown={handleKeyDown}
                                   className="input-field text-sm"
                                   placeholder="4,50"
                                   data-field="comprimento"
