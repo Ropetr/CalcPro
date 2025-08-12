@@ -16,20 +16,37 @@ import {
   Edit3,
   Search,
   Flag,
-  CheckCircle
+  CheckCircle,
+  Square,
+  Scissors
 } from 'lucide-react'
 import Link from 'next/link'
 import { useKeyboardNavigation } from '@/lib/ui-standards/navigation/useKeyboardNavigation'
 import { NavigationHelp } from '@/lib/ui-standards/navigation/components/NavigationHelp'
 import { autoCompleteDimension } from '@/lib/ui-standards/formatting/formatters'
+import { ForroPVCCalculator } from '@/lib/calculators/forro-pvc/calculator'
+import type { 
+  ComodoPVC, 
+  AmbientePVC, 
+  EspecificacoesPVC, 
+  VaosPVC,
+  ResultadoCalculoPVC 
+} from '@/lib/calculators/forro-pvc/types'
+
+interface Ambiente {
+  id: string
+  altura: string
+  largura: string
+  area: number
+}
 
 interface Medida {
   id: string
   nome: string
-  altura: string
-  largura: string
   descricao: string
-  area: number
+  tipo: 'retangular' | 'em_l'
+  ambientes: Ambiente[]
+  areaTotal: number
   especificacoes: {
     tipoPVC: 'branco' | 'texturizado' | 'madeirado'
     perfis: 'cantoneira' | 'perfil-h' | 'ambos'
@@ -57,6 +74,9 @@ interface Medida {
   }
 }
 
+// Instância da calculadora
+const calculator = new ForroPVCCalculator()
+
 export default function ForroPVCPage() {
   const [modalidade, setModalidade] = useState<'abnt' | 'basica'>('basica')
   const [activeTab, setActiveTab] = useState<'medidas' | 'desenho' | 'materiais'>('medidas')
@@ -68,7 +88,7 @@ export default function ForroPVCPage() {
     acabamento: 'branco' | 'colorido' | 'madeirado'
     instalacao: 'pregada' | 'encaixe' | 'colada'
   } | null>(null)
-  const [resultadoCalculo, setResultadoCalculo] = useState<any | null>(null)
+  const [resultadoCalculo, setResultadoCalculo] = useState<ResultadoCalculoPVC | null>(null)
   
   // Sistema de navegação por teclado
   const navigation = useKeyboardNavigation()
@@ -87,11 +107,18 @@ export default function ForroPVCPage() {
   const [medidas, setMedidas] = useState<Medida[]>([
     {
       id: '1',
-      nome: 'Ambiente 01',
-      altura: '',
-      largura: '',
+      nome: 'Cômodo 01',
       descricao: '',
-      area: 0,
+      tipo: 'retangular',
+      ambientes: [
+        {
+          id: '1-1',
+          altura: '',
+          largura: '',
+          area: 0
+        }
+      ],
+      areaTotal: 0,
       especificacoes: {
         tipoPVC: 'branco' as const,
         perfis: 'cantoneira' as const,
@@ -123,27 +150,43 @@ export default function ForroPVCPage() {
   // Configurações gerais do projeto
   const [espessura, setEspessura] = useState('200')
 
-  // Atalhos de teclado: TAB (nova medida) e ENTER (calcular)
+  // Atalhos de teclado: TAB (novo cômodo), SHIFT+TAB (novo ambiente), ENTER (calcular)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLInputElement
       
-      // Se está no campo descrição e pressionou TAB
+      // Se está no último campo de um ambiente e pressionou TAB
       if (target?.getAttribute('data-field') === 'descricao' && event.key === 'Tab') {
         event.preventDefault()
-        // Salvar o valor atual antes de adicionar nova medida
-        const medidaId = target.closest('[data-medida-id]')?.getAttribute('data-medida-id')
+        // Salvar o valor atual antes de adicionar
+        const medidaId = target.closest('[data-comodo-id]')?.getAttribute('data-comodo-id')
         if (medidaId && target.value) {
           atualizarMedida(medidaId, 'descricao', target.value)
         }
-        adicionarMedida()
-        // Focar no primeiro campo (largura) da nova medida após um pequeno delay
-        setTimeout(() => {
-          const novoInput = document.querySelector('[data-medida-id]:first-child input[type="text"]') as HTMLInputElement
-          if (novoInput) {
-            novoInput.focus()
+        
+        if (event.shiftKey) {
+          // SHIFT + TAB: adicionar novo ambiente no mesmo cômodo
+          if (medidaId) {
+            adicionarAmbiente(medidaId)
+            // Focar no primeiro campo do novo ambiente
+            setTimeout(() => {
+              const novoInput = document.querySelector(`[data-comodo-id="${medidaId}"] [data-ambiente-id]:last-child input[type="text"]:first-of-type`) as HTMLInputElement
+              if (novoInput) {
+                novoInput.focus()
+              }
+            }, 100)
           }
-        }, 100)
+        } else {
+          // TAB: adicionar novo cômodo
+          adicionarMedida()
+          // Focar no primeiro campo do novo cômodo
+          setTimeout(() => {
+            const novoInput = document.querySelector('[data-comodo-id]:first-child [data-ambiente-id] input[type="text"]:first-of-type') as HTMLInputElement
+            if (novoInput) {
+              novoInput.focus()
+            }
+          }, 100)
+        }
       }
       
       // Se está no campo descrição e pressionou ENTER
@@ -161,72 +204,106 @@ export default function ForroPVCPage() {
 
   const calcularMateriais = () => {
     try {
-      // Simular cálculo de materiais para forro PVC
-      const medidasValidas = medidas.filter(medida => 
-        parseFloat(medida.altura.replace(',', '.')) > 0 && 
-        parseFloat(medida.largura.replace(',', '.')) > 0
-      )
+      // Converter medidas para o formato da calculadora
+      const comodosParaCalcular: ComodoPVC[] = []
       
-      if (medidasValidas.length === 0) {
-        alert('Adicione pelo menos uma medida válida para calcular')
+      for (const medida of medidas) {
+        // Verificar se tem ambientes válidos
+        const ambientesValidos = medida.ambientes.filter(ambiente => {
+          const altura = parseFloat(ambiente.altura.replace(',', '.'))
+          const largura = parseFloat(ambiente.largura.replace(',', '.'))
+          return altura > 0 && largura > 0
+        })
+        
+        if (ambientesValidos.length === 0) continue
+        
+        // Converter ambientes
+        const ambientesPVC: AmbientePVC[] = ambientesValidos.map(ambiente => ({
+          id: ambiente.id,
+          largura: parseFloat(ambiente.largura.replace(',', '.')),
+          comprimento: parseFloat(ambiente.altura.replace(',', '.')),
+          descricao: `${medida.nome} - Ambiente ${ambiente.id.split('-')[1]}`
+        }))
+        
+        // Calcular área total
+        const area = ambientesPVC.reduce((total, amb) => total + (amb.largura * amb.comprimento), 0)
+        
+        const comodoPVC: ComodoPVC = {
+          id: medida.id,
+          nome: medida.nome,
+          ambientes: ambientesPVC,
+          area,
+          tipoComodo: medida.tipo === 'em_l' ? 'em_l' : 'retangular'
+        }
+        
+        comodosParaCalcular.push(comodoPVC)
+      }
+      
+      if (comodosParaCalcular.length === 0) {
+        alert('Adicione pelo menos um cômodo com medidas válidas para calcular')
         return
       }
       
-      // Resultado fictício para demonstrar a estrutura
-      const resultado = {
-        areaTotal: medidasValidas.reduce((total, medida) => 
-          total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))), 0
-        ),
-        resumo: {
-          totalReguas: Math.ceil(medidasValidas.reduce((total, medida) => 
-            total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))) / 0.6, 0
-          )),
-          totalPerfis: Math.ceil(medidasValidas.length * 4.0),
-          totalAcessorios: medidasValidas.reduce((total, medida) => 
-            total + parseInt(medida.vaos.luminárias.quantidade) + parseInt(medida.vaos.ventiladores.quantidade) + parseInt(medida.vaos.acesso.quantidade), 0
-          )
-        },
-        materiais: {
-          reguas: [
-            {
-              item: `Régua PVC ${espessura}mm`,
-              descricao: "Régua PVC para forro suspenso",
-              quantidade: Math.ceil(medidasValidas.reduce((total, medida) => 
-                total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))) / 0.6, 0
-              )),
-              unidade: "m",
-              observacoes: "Largura 200mm"
-            }
-          ],
-          perfis: [
-            {
-              item: "Cantoneira PVC",
-              descricao: "Perfil de acabamento perimetral",
-              quantidade: Math.ceil(medidasValidas.length * 4.0),
-              unidade: "m",
-              observacoes: "Barras de 2,50m"
-            },
-            {
-              item: "Perfil H",
-              descricao: "Perfil para emendas intermediárias",
-              quantidade: Math.ceil(medidasValidas.length * 2.0),
-              unidade: "m",
-              observacoes: "Para ambientes maiores"
-            }
-          ],
-          acessorios: [
-            {
-              item: "Parafusos Autoperfurantes",
-              descricao: "Fixação das réguas na estrutura",
-              quantidade: Math.ceil(medidasValidas.reduce((total, medida) => 
-                total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))) / 0.5, 0
-              )),
-              unidade: "un",
-              observacoes: "Por m²"
-            }
-          ]
-        }
+      // Preparar especificações (usar da primeira medida configurada)
+      const medidaComEspec = medidas.find(m => m.especificacoes.preenchido)
+      const especificacoes: EspecificacoesPVC = medidaComEspec ? {
+        tipoPVC: medidaComEspec.especificacoes.tipoPVC,
+        perfis: medidaComEspec.especificacoes.perfis,
+        acabamento: medidaComEspec.especificacoes.acabamento,
+        instalacao: medidaComEspec.especificacoes.instalacao
+      } : {
+        tipoPVC: 'branco',
+        perfis: 'cantoneira',
+        acabamento: 'branco',
+        instalacao: 'pregada'
       }
+      
+      // Preparar vãos (somar todos os vãos configurados)
+      const vaos: VaosPVC = {
+        luminárias: [],
+        ventiladores: [],
+        acesso: []
+      }
+      
+      medidas.forEach(medida => {
+        if (medida.vaos.preenchido) {
+          const qtdLum = parseInt(medida.vaos.luminárias.quantidade)
+          const qtdVent = parseInt(medida.vaos.ventiladores.quantidade)
+          const qtdAcess = parseInt(medida.vaos.acesso.quantidade)
+          
+          if (qtdLum > 0) {
+            vaos.luminárias.push({
+              quantidade: qtdLum,
+              largura: parseFloat(medida.vaos.luminárias.largura.replace(',', '.')),
+              altura: parseFloat(medida.vaos.luminárias.altura.replace(',', '.'))
+            })
+          }
+          
+          if (qtdVent > 0) {
+            vaos.ventiladores.push({
+              quantidade: qtdVent,
+              largura: parseFloat(medida.vaos.ventiladores.largura.replace(',', '.')),
+              altura: parseFloat(medida.vaos.ventiladores.altura.replace(',', '.'))
+            })
+          }
+          
+          if (qtdAcess > 0) {
+            vaos.acesso.push({
+              quantidade: qtdAcess,
+              largura: parseFloat(medida.vaos.acesso.largura.replace(',', '.')),
+              altura: parseFloat(medida.vaos.acesso.altura.replace(',', '.'))
+            })
+          }
+        }
+      })
+      
+      // Executar cálculo real
+      const resultado = calculator.calcular(
+        comodosParaCalcular,
+        [], // Medidas extras (implementar depois)
+        especificacoes,
+        vaos
+      )
       
       setResultadoCalculo(resultado)
       setActiveTab('materiais')
@@ -242,11 +319,18 @@ export default function ForroPVCPage() {
     const novaId = (medidas.length + 1).toString()
     const novoItem: Medida = {
       id: novaId,
-      nome: `Ambiente ${novaId.padStart(2, '0')}`,
-      altura: '',
-      largura: '',
+      nome: `Cômodo ${novaId.padStart(2, '0')}`,
       descricao: '',
-      area: 0,
+      tipo: 'retangular',
+      ambientes: [
+        {
+          id: `${novaId}-1`,
+          altura: '',
+          largura: '',
+          area: 0
+        }
+      ],
+      areaTotal: 0,
       especificacoes: especificacoesPadrao ? {
         tipoPVC: especificacoesPadrao.tipoPVC,
         perfis: especificacoesPadrao.perfis,
@@ -283,6 +367,50 @@ export default function ForroPVCPage() {
     setActiveTab('medidas')
   }
 
+  const adicionarAmbiente = (medidaId: string) => {
+    setMedidas(medidas.map(medida => {
+      if (medida.id === medidaId) {
+        const novoAmbienteId = `${medidaId}-${medida.ambientes.length + 1}`
+        const novoAmbiente: Ambiente = {
+          id: novoAmbienteId,
+          altura: '',
+          largura: '',
+          area: 0
+        }
+        
+        const ambientesAtualizados = [...medida.ambientes, novoAmbiente]
+        const tipo = ambientesAtualizados.length > 1 ? 'em_l' : 'retangular'
+        const areaTotal = ambientesAtualizados.reduce((total, amb) => total + amb.area, 0)
+        
+        return {
+          ...medida,
+          tipo,
+          ambientes: ambientesAtualizados,
+          areaTotal
+        }
+      }
+      return medida
+    }))
+  }
+
+  const removerAmbiente = (medidaId: string, ambienteId: string) => {
+    setMedidas(medidas.map(medida => {
+      if (medida.id === medidaId && medida.ambientes.length > 1) {
+        const ambientesAtualizados = medida.ambientes.filter(amb => amb.id !== ambienteId)
+        const tipo = ambientesAtualizados.length > 1 ? 'em_l' : 'retangular'
+        const areaTotal = ambientesAtualizados.reduce((total, amb) => total + amb.area, 0)
+        
+        return {
+          ...medida,
+          tipo,
+          ambientes: ambientesAtualizados,
+          areaTotal
+        }
+      }
+      return medida
+    }))
+  }
+
   const removerMedida = (id: string) => {
     if (medidas.length > 1) {
       setMedidas(medidas.filter(m => m.id !== id))
@@ -305,12 +433,12 @@ export default function ForroPVCPage() {
         } else {
           const updated = { ...medida, [campo]: valor }
           
-          // Calcular área automaticamente
-          if (campo === 'altura' || campo === 'largura') {
-            const altura = parseFloat((campo === 'altura' ? valor : updated.altura).replace(',', '.')) || 0
-            const largura = parseFloat((campo === 'largura' ? valor : updated.largura).replace(',', '.')) || 0
-            updated.area = altura * largura
+          // Recalcular área total dos ambientes
+          if (campo === 'ambientes') {
+            updated.areaTotal = valor.reduce((total: number, amb: Ambiente) => total + amb.area, 0)
+            updated.tipo = valor.length > 1 ? 'em_l' : 'retangular'
           }
+          
           return updated
         }
       }
@@ -318,7 +446,37 @@ export default function ForroPVCPage() {
     }))
   }
 
-  const areaTotal = medidas.reduce((total, medida) => total + medida.area, 0)
+  const atualizarAmbiente = (medidaId: string, ambienteId: string, campo: 'altura' | 'largura', valor: string) => {
+    setMedidas(medidas.map(medida => {
+      if (medida.id === medidaId) {
+        const ambientesAtualizados = medida.ambientes.map(ambiente => {
+          if (ambiente.id === ambienteId) {
+            const ambienteAtualizado = { ...ambiente, [campo]: valor }
+            
+            // Recalcular área do ambiente
+            const altura = parseFloat(ambienteAtualizado.altura.replace(',', '.')) || 0
+            const largura = parseFloat(ambienteAtualizado.largura.replace(',', '.')) || 0
+            ambienteAtualizado.area = altura * largura
+            
+            return ambienteAtualizado
+          }
+          return ambiente
+        })
+        
+        // Recalcular área total do cômodo
+        const areaTotal = ambientesAtualizados.reduce((total, amb) => total + amb.area, 0)
+        
+        return {
+          ...medida,
+          ambientes: ambientesAtualizados,
+          areaTotal
+        }
+      }
+      return medida
+    }))
+  }
+
+  const areaTotal = medidas.reduce((total, medida) => total + medida.areaTotal, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (medida: Medida) => {
@@ -415,17 +573,17 @@ export default function ForroPVCPage() {
                   {areaTotal.toFixed(2)} m²
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {medidas.length} ambiente{medidas.length !== 1 ? 's' : ''}
+                  {medidas.length} cômodo{medidas.length !== 1 ? 's' : ''}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow p-6 text-center">
                 <Layers className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-                <div className="text-sm text-gray-600">Ambientes</div>
+                <div className="text-sm text-gray-600">Cômodos</div>
                 <div className="text-2xl font-bold text-gray-900">{medidas.length}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova medida
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> novo cômodo
                   <br />
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Shift+Tab</kbd> novo ambiente
                 </div>
               </div>
             </div>
@@ -505,12 +663,12 @@ export default function ForroPVCPage() {
                     {medidas.length === 0 && (
                       <div className="text-center py-8">
                         <Ruler className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <div className="text-gray-600">Nenhuma medida adicionada</div>
+                        <div className="text-gray-600">Nenhum cômodo adicionado</div>
                         <button
                           onClick={adicionarMedida}
                           className="mt-3 btn-primary"
                         >
-                          Adicionar Primeira Medida
+                          Adicionar Primeiro Cômodo
                         </button>
                       </div>
                     )}
@@ -519,113 +677,160 @@ export default function ForroPVCPage() {
                       {medidas.slice().reverse().map((medida, reverseIndex) => {
                         const displayNumber = medidas.length - reverseIndex;
                         return (
-                          <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-medida-id={medida.id}>
+                          <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-comodo-id={medida.id}>
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-green-600">{displayNumber}</span>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                  medida.tipo === 'em_l' ? 'bg-blue-100' : 'bg-green-100'
+                                }`}>
+                                  <span className={`text-sm font-medium ${
+                                    medida.tipo === 'em_l' ? 'text-blue-600' : 'text-green-600'
+                                  }`}>{displayNumber}</span>
                                 </div>
-                            <input
-                              type="text"
-                              value={medida.nome}
-                              onChange={(e) => atualizarMedida(medida.id, 'nome', e.target.value)}
-                              className="text-sm font-medium bg-transparent border-none focus:ring-0 p-0"
-                              placeholder="Nome do ambiente"
-                            />
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="flex items-center space-x-1 mr-3">
-                              <button
-                                onClick={() => setModalAberto({tipo: 'especificacoes', medidaId: medida.id})}
-                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors ${getCorFlagEspecificacoes(medida)}`}
-                                title={
-                                  !medida.especificacoes.preenchido 
-                                    ? "🔴 Especificações - Não configurada"
-                                    : !especificacoesPadrao 
-                                      ? "🟢 Especificações - Configurada"
-                                      : medida.especificacoes.tipoPVC === especificacoesPadrao.tipoPVC &&
-                                        medida.especificacoes.perfis === especificacoesPadrao.perfis &&
-                                        medida.especificacoes.acabamento === especificacoesPadrao.acabamento &&
-                                        medida.especificacoes.instalacao === especificacoesPadrao.instalacao
-                                        ? "🟢 Especificações - Padrão do projeto"
-                                        : "🟡 Especificações - Modificada/Personalizada"
-                                }
-                              >
-                                <Flag className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => setModalAberto({tipo: 'vaos', medidaId: medida.id})}
-                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors ${getCorFlagVaos(medida)}`}
-                                title={
-                                  !medida.vaos.preenchido 
-                                    ? "🔴 Vãos e Aberturas - Não configurada"
-                                    : parseInt(medida.vaos.luminárias.quantidade) > 0 || parseInt(medida.vaos.ventiladores.quantidade) > 0 || parseInt(medida.vaos.acesso.quantidade) > 0
-                                      ? "🟢 Vãos e Aberturas - Tem vãos"
-                                      : "🔴 Vãos e Aberturas - Sem dados"
-                                }
-                              >
-                                <Flag className="h-3 w-3" />
-                              </button>
+                                {medida.tipo === 'em_l' && (
+                                  <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                    <Square className="h-3 w-3 mr-1" />
+                                    Em L
+                                  </div>
+                                )}
+                                <input
+                                  type="text"
+                                  value={medida.nome}
+                                  onChange={(e) => atualizarMedida(medida.id, 'nome', e.target.value)}
+                                  className="text-sm font-medium bg-transparent border-none focus:ring-0 p-0"
+                                  placeholder="Nome do cômodo"
+                                />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-1 mr-3">
+                                  <button
+                                    onClick={() => setModalAberto({tipo: 'especificacoes', medidaId: medida.id})}
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors ${getCorFlagEspecificacoes(medida)}`}
+                                    title={
+                                      !medida.especificacoes.preenchido 
+                                        ? "🔴 Especificações - Não configurada"
+                                        : !especificacoesPadrao 
+                                          ? "🟢 Especificações - Configurada"
+                                          : medida.especificacoes.tipoPVC === especificacoesPadrao.tipoPVC &&
+                                            medida.especificacoes.perfis === especificacoesPadrao.perfis &&
+                                            medida.especificacoes.acabamento === especificacoesPadrao.acabamento &&
+                                            medida.especificacoes.instalacao === especificacoesPadrao.instalacao
+                                            ? "🟢 Especificações - Padrão do projeto"
+                                            : "🟡 Especificações - Modificada/Personalizada"
+                                    }
+                                  >
+                                    <Flag className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => setModalAberto({tipo: 'vaos', medidaId: medida.id})}
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors ${getCorFlagVaos(medida)}`}
+                                    title={
+                                      !medida.vaos.preenchido 
+                                        ? "🔴 Vãos e Aberturas - Não configurada"
+                                        : parseInt(medida.vaos.luminárias.quantidade) > 0 || parseInt(medida.vaos.ventiladores.quantidade) > 0 || parseInt(medida.vaos.acesso.quantidade) > 0
+                                          ? "🟢 Vãos e Aberturas - Tem vãos"
+                                          : "🔴 Vãos e Aberturas - Sem dados"
+                                    }
+                                  >
+                                    <Flag className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                <div className="text-sm text-gray-600 font-medium">
+                                  {medida.areaTotal.toFixed(2)} m²
+                                </div>
+                                {medidas.length > 1 && (
+                                  <button
+                                    onClick={() => removerMedida(medida.id)}
+                                    className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {medida.area.toFixed(2)} m²
+                            
+                            {/* Tabela de Ambientes */}
+                            <div className="mb-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-xs font-medium text-gray-700">
+                                  Ambientes ({medida.ambientes.length})
+                                </div>
+                                <button
+                                  onClick={() => adicionarAmbiente(medida.id)}
+                                  className="text-xs text-blue-600 hover:text-blue-700 flex items-center"
+                                  title="Adicionar ambiente (transforma em L)"
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Adicionar
+                                </button>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                {medida.ambientes.map((ambiente, ambIndex) => (
+                                  <div key={ambiente.id} className="grid grid-cols-6 gap-2 p-2 bg-gray-50 rounded" data-ambiente-id={ambiente.id}>
+                                    <div className="col-span-1">
+                                      <label className="block text-xs text-gray-600 mb-1">#{ambIndex + 1}</label>
+                                      <div className="flex items-center">
+                                        {medida.ambientes.length > 1 && (
+                                          <button
+                                            onClick={() => removerAmbiente(medida.id, ambiente.id)}
+                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="col-span-2">
+                                      <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                                      <input
+                                        type="text"
+                                        value={ambiente.largura}
+                                        onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'largura', e.target.value)}
+                                        onBlur={(e) => {
+                                          const formatted = handleDimensionBlur('largura', e.target.value)
+                                          atualizarAmbiente(medida.id, ambiente.id, 'largura', formatted)
+                                        }}
+                                        className="input-field text-sm w-full"
+                                        placeholder="3,50"
+                                      />
+                                    </div>
+                                    <div className="col-span-2">
+                                      <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
+                                      <input
+                                        type="text"
+                                        value={ambiente.altura}
+                                        onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'altura', e.target.value)}
+                                        onBlur={(e) => {
+                                          const formatted = handleDimensionBlur('altura', e.target.value)
+                                          atualizarAmbiente(medida.id, ambiente.id, 'altura', formatted)
+                                        }}
+                                        className="input-field text-sm w-full"
+                                        placeholder="2,70"
+                                      />
+                                    </div>
+                                    <div className="col-span-1">
+                                      <label className="block text-xs text-gray-600 mb-1">Área</label>
+                                      <div className="text-sm font-medium text-gray-900 py-1">
+                                        {ambiente.area.toFixed(1)}m²
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            {medidas.length > 1 && (
-                              <button
-                                onClick={() => removerMedida(medida.id)}
-                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
-                            <input
-                              type="text"
-                              value={medida.largura}
-                              onChange={(e) => atualizarMedida(medida.id, 'largura', e.target.value)}
-                              onBlur={(e) => {
-                                const formatted = handleDimensionBlur('largura', e.target.value)
-                                atualizarMedida(medida.id, 'largura', formatted)
-                              }}
-                              onKeyDown={handleKeyDown}
-                              className="input-field text-sm"
-                              placeholder="3,50"
-                              data-nav-index={0}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Altura (m)</label>
-                            <input
-                              type="text"
-                              value={medida.altura}
-                              onChange={(e) => atualizarMedida(medida.id, 'altura', e.target.value)}
-                              onBlur={(e) => {
-                                const formatted = handleDimensionBlur('altura', e.target.value)
-                                atualizarMedida(medida.id, 'altura', formatted)
-                              }}
-                              onKeyDown={handleKeyDown}
-                              className="input-field text-sm"
-                              placeholder="2,70"
-                              data-nav-index={1}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Descrição</label>
-                            <input
-                              type="text"
-                              value={medida.descricao}
-                              onChange={(e) => atualizarMedida(medida.id, 'descricao', e.target.value)}
-                              className="input-field text-sm"
-                              placeholder="Ex: Sala, Cozinha..."
-                              data-field="descricao"
-                            />
-                          </div>
-                        </div>
+                            
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">Descrição do Cômodo</label>
+                              <input
+                                type="text"
+                                value={medida.descricao}
+                                onChange={(e) => atualizarMedida(medida.id, 'descricao', e.target.value)}
+                                className="input-field text-sm w-full"
+                                placeholder="Ex: Sala de estar, Cozinha em L..."
+                                data-field="descricao"
+                              />
+                            </div>
                           </div>
                         )
                       })}
@@ -643,7 +848,7 @@ export default function ForroPVCPage() {
                           <div className="text-gray-600">Desenho técnico será gerado após o cálculo</div>
                           <div className="text-sm text-gray-500">Inclui disposição das réguas e pontos de fixação</div>
                           <div className="text-xs text-gray-500 mt-2">
-                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} ambiente{medidas.length !== 1 ? 's' : ''})
+                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} cômodo{medidas.length !== 1 ? 's' : ''})
                           </div>
                         </div>
                       </div>
@@ -667,7 +872,14 @@ export default function ForroPVCPage() {
                       <div className="text-center text-gray-500 py-8">
                         <Calculator className="h-12 w-12 mx-auto mb-3 text-gray-400" />
                         <div>Execute o cálculo para ver a lista detalhada de materiais</div>
-                        <div className="text-sm mt-1">Inclui réguas PVC, cantoneiras e perfis de acabamento</div>
+                        <div className="text-sm mt-1">Inclui réguas PVC, rodaforro, cantoneiras e parafusos</div>
+                        <button 
+                          onClick={calcularMateriais}
+                          className="mt-4 btn-primary flex items-center mx-auto"
+                        >
+                          <Calculator className="h-4 w-4 mr-2" />
+                          Calcular Agora
+                        </button>
                       </div>
                     ) : (
                       <div className="space-y-6">
@@ -678,15 +890,17 @@ export default function ForroPVCPage() {
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                             <div className="text-center">
-                              <div className="text-lg font-bold text-green-900">{resultadoCalculo.areaTotal.toFixed(2)}</div>
+                              <div className="text-lg font-bold text-green-900">{resultadoCalculo.totais.area.toFixed(2)}</div>
                               <div className="text-green-700">m² líquidos</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-green-900">{resultadoCalculo.resumo.totalReguas}</div>
+                              <div className="text-lg font-bold text-green-900">
+                                {Object.values(resultadoCalculo.totais.reguasForro).reduce((a: number, b: number) => a + b, 0)}
+                              </div>
                               <div className="text-green-700">réguas (m)</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-green-900">{resultadoCalculo.resumo.totalPerfis}</div>
+                              <div className="text-lg font-bold text-green-900">{resultadoCalculo.totais.cantoneiras}</div>
                               <div className="text-green-700">perfis (m)</div>
                             </div>
                           </div>
@@ -702,17 +916,16 @@ export default function ForroPVCPage() {
                           </div>
                           <div className="p-4">
                             <div className="space-y-3">
-                              {resultadoCalculo.materiais.reguas.map((item: any, index: number) => (
-                                <div key={index} className="flex justify-between items-start">
+                              {Object.entries(resultadoCalculo.totais.reguasForro).map(([comprimento, quantidade]) => (
+                                <div key={comprimento} className="flex justify-between items-center">
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{item.item}</div>
-                                    <div className="text-sm text-gray-600">{item.descricao}</div>
-                                    {item.observacoes && (
-                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
-                                    )}
+                                    <div className="font-medium text-gray-900">Régua PVC {comprimento}m</div>
+                                    <div className="text-sm text-gray-600">Régua de forro suspenso</div>
+                                    <div className="text-xs text-gray-500 mt-1">Largura 200mm</div>
                                   </div>
                                   <div className="text-right ml-4">
-                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                    <div className="font-semibold text-gray-900">{quantidade} un</div>
+                                    <div className="text-xs text-gray-500">{(parseFloat(comprimento) * quantidade).toFixed(1)}m total</div>
                                   </div>
                                 </div>
                               ))}
@@ -730,20 +943,29 @@ export default function ForroPVCPage() {
                           </div>
                           <div className="p-4">
                             <div className="space-y-3">
-                              {resultadoCalculo.materiais.perfis.map((item: any, index: number) => (
-                                <div key={index} className="flex justify-between items-start">
+                              <div className="flex justify-between items-center">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">Cantoneiras PVC</div>
+                                  <div className="text-sm text-gray-600">Perfil de acabamento perimetral</div>
+                                  <div className="text-xs text-gray-500 mt-1">Barras de 2,50m</div>
+                                </div>
+                                <div className="text-right ml-4">
+                                  <div className="font-semibold text-gray-900">{resultadoCalculo.totais.cantoneiras}m</div>
+                                </div>
+                              </div>
+                              
+                              {resultadoCalculo.totais.perfisEmenda > 0 && (
+                                <div className="flex justify-between items-center">
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{item.item}</div>
-                                    <div className="text-sm text-gray-600">{item.descricao}</div>
-                                    {item.observacoes && (
-                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
-                                    )}
+                                    <div className="font-medium text-gray-900">Perfis de Emenda</div>
+                                    <div className="text-sm text-gray-600">Para junção de réguas</div>
+                                    <div className="text-xs text-gray-500 mt-1">Necessário para emendas</div>
                                   </div>
                                   <div className="text-right ml-4">
-                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.totais.perfisEmenda}m</div>
                                   </div>
                                 </div>
-                              ))}
+                              )}
                             </div>
                           </div>
                         </div>
@@ -758,20 +980,47 @@ export default function ForroPVCPage() {
                           </div>
                           <div className="p-4">
                             <div className="space-y-3">
-                              {resultadoCalculo.materiais.acessorios.map((item: any, index: number) => (
-                                <div key={index} className="flex justify-between items-start">
+                              {resultadoCalculo.totais.parafuso4213 > 0 && (
+                                <div className="flex justify-between items-center">
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{item.item}</div>
-                                    <div className="text-sm text-gray-600">{item.descricao}</div>
-                                    {item.observacoes && (
-                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
-                                    )}
+                                    <div className="font-medium text-gray-900">Parafuso 4,2x13mm</div>
+                                    <div className="text-sm text-gray-600">Fixação das réguas na estrutura</div>
+                                    <div className="text-xs text-gray-500 mt-1">Pacotes de 500 unidades</div>
                                   </div>
                                   <div className="text-right ml-4">
-                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.totais.parafuso4213} pacotes</div>
+                                    <div className="text-xs text-gray-500">{resultadoCalculo.totais.parafuso4213 * 500} unidades</div>
                                   </div>
                                 </div>
-                              ))}
+                              )}
+                              
+                              {resultadoCalculo.totais.parafusoGN25 > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">Parafuso GN25</div>
+                                    <div className="text-sm text-gray-600">Fixação de perfis e cantoneiras</div>
+                                    <div className="text-xs text-gray-500 mt-1">Pacotes de 100 unidades</div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.totais.parafusoGN25} pacotes</div>
+                                    <div className="text-xs text-gray-500">{resultadoCalculo.totais.parafusoGN25 * 100} unidades</div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {resultadoCalculo.totais.parafusoBucha > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">Parafuso com Bucha</div>
+                                    <div className="text-sm text-gray-600">Fixação de cantoneiras na parede</div>
+                                    <div className="text-xs text-gray-500 mt-1">Pacotes de 50 unidades</div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.totais.parafusoBucha} pacotes</div>
+                                    <div className="text-xs text-gray-500">{resultadoCalculo.totais.parafusoBucha * 50} unidades</div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -786,15 +1035,24 @@ export default function ForroPVCPage() {
         </div>
       </div>
 
-      {/* Botão Flutuante para Adicionar Medida */}
+      {/* Botões Flutuantes */}
       {activeTab === 'medidas' && (
-        <button
-          onClick={adicionarMedida}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-          title="Adicionar nova medida"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
+        <div className="fixed bottom-8 right-8 flex flex-col space-y-2">
+          <button
+            onClick={calcularMateriais}
+            className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+            title="Calcular materiais (Enter)"
+          >
+            <Calculator className="h-6 w-6" />
+          </button>
+          <button
+            onClick={adicionarMedida}
+            className="w-14 h-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+            title="Adicionar novo cômodo (Tab)"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        </div>
       )}
 
       {/* Modal para Especificações */}
