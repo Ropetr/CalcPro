@@ -315,6 +315,7 @@ export class DrywallCalculator {
    */
   private calcularGuiasComplexo(paredes: MedidaParede[]): CalculoMaterial[] {
     const BARRA_3M = 3.0
+    const perfis: CalculoMaterial[] = []
     
     // Estrutura para organizar por tipo de perfil
     interface DadosGuia {
