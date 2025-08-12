@@ -544,6 +544,13 @@ export default function ForroPVCPage() {
             </div>
             <div className="flex items-center space-x-3">
               <NavigationHelp navigation={navigation} />
+              <button 
+                onClick={calcularMateriais}
+                className="btn-secondary flex items-center"
+              >
+                <Calculator className="h-4 w-4 mr-2" />
+                Calcular Materiais
+              </button>
               <button className="btn-secondary flex items-center">
                 <FileText className="h-4 w-4 mr-2" />
                 Salvar Projeto
@@ -680,15 +687,11 @@ export default function ForroPVCPage() {
                           <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-comodo-id={medida.id}>
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                  medida.tipo === 'em_l' ? 'bg-blue-100' : 'bg-green-100'
-                                }`}>
-                                  <span className={`text-sm font-medium ${
-                                    medida.tipo === 'em_l' ? 'text-blue-600' : 'text-green-600'
-                                  }`}>{displayNumber}</span>
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-green-600">{displayNumber}</span>
                                 </div>
                                 {medida.tipo === 'em_l' && (
-                                  <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                  <div className="flex items-center text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
                                     <Square className="h-3 w-3 mr-1" />
                                     Em L
                                   </div>
@@ -735,7 +738,7 @@ export default function ForroPVCPage() {
                                     <Flag className="h-3 w-3" />
                                   </button>
                                 </div>
-                                <div className="text-sm text-gray-600 font-medium">
+                                <div className="text-sm text-gray-600">
                                   {medida.areaTotal.toFixed(2)} m²
                                 </div>
                                 {medidas.length > 1 && (
@@ -749,93 +752,115 @@ export default function ForroPVCPage() {
                               </div>
                             </div>
                             
-                            {/* Tabela de Ambientes */}
+                            {/* Layout Simples - Primeiro Ambiente (Padrão Divisória Drywall) */}
                             <div className="mb-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="text-xs font-medium text-gray-700">
-                                  Ambientes ({medida.ambientes.length})
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                                  <input
+                                    type="text"
+                                    value={medida.ambientes[0]?.largura || ''}
+                                    onChange={(e) => atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'largura', e.target.value)}
+                                    onBlur={(e) => {
+                                      const formatted = handleDimensionBlur('largura', e.target.value)
+                                      atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'largura', formatted)
+                                    }}
+                                    className="input-field text-sm"
+                                    placeholder="3,50"
+                                  />
                                 </div>
-                                <button
-                                  onClick={() => adicionarAmbiente(medida.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-700 flex items-center"
-                                  title="Adicionar ambiente (transforma em L)"
-                                >
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Adicionar
-                                </button>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                {medida.ambientes.map((ambiente, ambIndex) => (
-                                  <div key={ambiente.id} className="grid grid-cols-6 gap-2 p-2 bg-gray-50 rounded" data-ambiente-id={ambiente.id}>
-                                    <div className="col-span-1">
-                                      <label className="block text-xs text-gray-600 mb-1">#{ambIndex + 1}</label>
-                                      <div className="flex items-center">
-                                        {medida.ambientes.length > 1 && (
-                                          <button
-                                            onClick={() => removerAmbiente(medida.id, ambiente.id)}
-                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="col-span-2">
-                                      <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
-                                      <input
-                                        type="text"
-                                        value={ambiente.largura}
-                                        onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'largura', e.target.value)}
-                                        onBlur={(e) => {
-                                          const formatted = handleDimensionBlur('largura', e.target.value)
-                                          atualizarAmbiente(medida.id, ambiente.id, 'largura', formatted)
-                                        }}
-                                        className="input-field text-sm w-full"
-                                        placeholder="3,50"
-                                      />
-                                    </div>
-                                    <div className="col-span-2">
-                                      <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
-                                      <input
-                                        type="text"
-                                        value={ambiente.altura}
-                                        onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'altura', e.target.value)}
-                                        onBlur={(e) => {
-                                          const formatted = handleDimensionBlur('altura', e.target.value)
-                                          atualizarAmbiente(medida.id, ambiente.id, 'altura', formatted)
-                                        }}
-                                        className="input-field text-sm w-full"
-                                        placeholder="2,70"
-                                      />
-                                    </div>
-                                    <div className="col-span-1">
-                                      <label className="block text-xs text-gray-600 mb-1">Área</label>
-                                      <div className="text-sm font-medium text-gray-900 py-1">
-                                        {ambiente.area.toFixed(1)}m²
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
+                                <div>
+                                  <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
+                                  <input
+                                    type="text"
+                                    value={medida.ambientes[0]?.altura || ''}
+                                    onChange={(e) => atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'altura', e.target.value)}
+                                    onBlur={(e) => {
+                                      const formatted = handleDimensionBlur('altura', e.target.value)
+                                      atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'altura', formatted)
+                                    }}
+                                    className="input-field text-sm"
+                                    placeholder="2,70"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-600 mb-1">Descrição</label>
+                                  <input
+                                    type="text"
+                                    value={medida.descricao}
+                                    onChange={(e) => atualizarMedida(medida.id, 'descricao', e.target.value)}
+                                    className="input-field text-sm"
+                                    placeholder="Ex: Sala, Quarto..."
+                                    data-field="descricao"
+                                  />
+                                </div>
                               </div>
                             </div>
                             
-                            <div>
-                              <label className="block text-xs text-gray-600 mb-1">Descrição do Cômodo</label>
-                              <input
-                                type="text"
-                                value={medida.descricao}
-                                onChange={(e) => atualizarMedida(medida.id, 'descricao', e.target.value)}
-                                className="input-field text-sm w-full"
-                                placeholder="Ex: Sala de estar, Cozinha em L..."
-                                data-field="descricao"
-                              />
-                            </div>
+                            {/* Ambientes Adicionais (Em L) - Aparecem só quando SHIFT+TAB */}
+                            {medida.ambientes.length > 1 && (
+                              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <div className="flex items-center mb-2">
+                                  <Square className="h-4 w-4 text-red-600 mr-2" />
+                                  <span className="text-sm font-medium text-red-800">Cômodo em L - Ambientes Adicionais</span>
+                                </div>
+                                <div className="space-y-2">
+                                  {medida.ambientes.slice(1).map((ambiente, ambIndex) => (
+                                    <div key={ambiente.id} className="grid grid-cols-6 gap-2 p-2 bg-white rounded" data-ambiente-id={ambiente.id}>
+                                      <div className="col-span-1">
+                                        <div className="flex items-center justify-center h-full">
+                                          <button
+                                            onClick={() => removerAmbiente(medida.id, ambiente.id)}
+                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                            title="Remover ambiente"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <div className="col-span-2">
+                                        <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                                        <input
+                                          type="text"
+                                          value={ambiente.largura}
+                                          onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'largura', e.target.value)}
+                                          onBlur={(e) => {
+                                            const formatted = handleDimensionBlur('largura', e.target.value)
+                                            atualizarAmbiente(medida.id, ambiente.id, 'largura', formatted)
+                                          }}
+                                          className="input-field text-sm w-full"
+                                          placeholder="3,50"
+                                        />
+                                      </div>
+                                      <div className="col-span-2">
+                                        <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
+                                        <input
+                                          type="text"
+                                          value={ambiente.altura}
+                                          onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'altura', e.target.value)}
+                                          onBlur={(e) => {
+                                            const formatted = handleDimensionBlur('altura', e.target.value)
+                                            atualizarAmbiente(medida.id, ambiente.id, 'altura', formatted)
+                                          }}
+                                          className="input-field text-sm w-full"
+                                          placeholder="2,70"
+                                        />
+                                      </div>
+                                      <div className="col-span-1">
+                                        <label className="block text-xs text-gray-600 mb-1">Área</label>
+                                        <div className="text-sm font-medium text-gray-900 py-1">
+                                          {ambiente.area.toFixed(1)}m²
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )
                       })}
                     </div>
-                    
                   </div>
                 )}
 
@@ -1035,25 +1060,6 @@ export default function ForroPVCPage() {
         </div>
       </div>
 
-      {/* Botões Flutuantes */}
-      {activeTab === 'medidas' && (
-        <div className="fixed bottom-8 right-8 flex flex-col space-y-2">
-          <button
-            onClick={calcularMateriais}
-            className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-            title="Calcular materiais (Enter)"
-          >
-            <Calculator className="h-6 w-6" />
-          </button>
-          <button
-            onClick={adicionarMedida}
-            className="w-14 h-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-            title="Adicionar novo cômodo (Tab)"
-          >
-            <Plus className="h-6 w-6" />
-          </button>
-        </div>
-      )}
 
       {/* Modal para Especificações */}
       {modalAberto.tipo === 'especificacoes' && modalAberto.medidaId && (() => {
