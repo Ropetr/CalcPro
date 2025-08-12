@@ -15,6 +15,9 @@ import {
   Eye
 } from 'lucide-react'
 import Link from 'next/link'
+import { useKeyboardNavigation } from '@/lib/ui-standards/navigation/useKeyboardNavigation'
+import { NavigationHelp } from '@/lib/ui-standards/navigation/components/NavigationHelp'
+import { autoCompleteDimension } from '@/lib/ui-standards/formatting/formatters'
 
 export default function DivisoriaNavalPage() {
   const [dimensions, setDimensions] = useState({
@@ -27,6 +30,24 @@ export default function DivisoriaNavalPage() {
     vidros: 0,
     portas: 0
   })
+
+  // Sistema de navegação por teclado
+  const { 
+    currentFocusIndex, 
+    handleKeyDown, 
+    focusElement,
+    addItem,
+    calculate 
+  } = useKeyboardNavigation()
+
+  // Função para formatação automática
+  const handleDimensionBlur = (field: string, value: string) => {
+    const formatted = autoCompleteDimension(value)
+    setDimensions(prev => ({
+      ...prev,
+      [field]: formatted
+    }))
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -53,6 +74,7 @@ export default function DivisoriaNavalPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              <NavigationHelp />
               <button className="btn-secondary flex items-center">
                 <FileText className="h-4 w-4 mr-2" />
                 Salvar Projeto
@@ -94,23 +116,27 @@ export default function DivisoriaNavalPage() {
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Altura (m)</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
                     value={dimensions.altura}
                     onChange={(e) => setDimensions({...dimensions, altura: e.target.value})}
+                    onBlur={(e) => handleDimensionBlur('altura', e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    data-nav-index={0}
                     className="input-field"
-                    placeholder="Ex: 2.70"
+                    placeholder="Ex: 2,70"
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Largura (m)</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
                     value={dimensions.largura}
                     onChange={(e) => setDimensions({...dimensions, largura: e.target.value})}
+                    onBlur={(e) => handleDimensionBlur('largura', e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    data-nav-index={1}
                     className="input-field"
-                    placeholder="Ex: 3.50"
+                    placeholder="Ex: 3,50"
                   />
                 </div>
               </div>

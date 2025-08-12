@@ -11,6 +11,8 @@ interface DrywallDrawingProps {
 export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingProps) {
   // Estado para controlar qual lado está sendo visualizado
   const [ladoAtivo, setLadoAtivo] = useState<'A' | 'A2' | 'B' | 'B2'>('A')
+  // Estado para controlar o zoom
+  const [zoomLevel, setZoomLevel] = useState<number>(1)
   // Dimensões em pixels (escala: 1m = 50px por padrão)
   const larguraPx = parede.largura * scale
   const alturaPx = parede.altura * scale
@@ -18,20 +20,22 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
   // Limitar tamanho máximo para não quebrar o layout
   const maxWidth = 600
   const maxHeight = 400
-  let finalScale = scale
+  let finalScale = scale * zoomLevel
   
-  if (larguraPx > maxWidth || alturaPx > maxHeight) {
-    const scaleX = maxWidth / parede.largura
-    const scaleY = maxHeight / parede.altura
-    finalScale = Math.min(scaleX, scaleY)
+  if ((larguraPx * zoomLevel) > maxWidth || (alturaPx * zoomLevel) > maxHeight) {
+    if (zoomLevel === 1) {
+      const scaleX = maxWidth / parede.largura
+      const scaleY = maxHeight / parede.altura
+      finalScale = Math.min(scaleX, scaleY)
+    }
   }
   
   const finalWidth = parede.largura * finalScale
   const finalHeight = parede.altura * finalScale
   
-  // SVG sempre do mesmo tamanho (apenas um lado por vez)
-  const svgWidth = finalWidth + 120 // Margem para cotas
-  const svgHeight = finalHeight + 100 // Margem para cotas
+  // SVG sempre do mesmo tamanho (apenas um lado por vez) 
+  const svgWidth = Math.max(finalWidth + 120, 600) // Margem para cotas
+  const svgHeight = Math.max(finalHeight + 100, 400) // Margem para cotas
 
 
   // Calcular vãos
@@ -165,7 +169,34 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
         </div>
       )}
       
-      <div className="overflow-x-auto">
+      {/* Controles de Zoom */}
+      <div className="mb-4 flex items-center justify-center gap-4">
+        <button
+          onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))}
+          className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium"
+          disabled={zoomLevel <= 0.5}
+        >
+          Zoom -
+        </button>
+        <span className="text-sm font-medium text-gray-700">
+          Zoom: {Math.round(zoomLevel * 100)}%
+        </span>
+        <button
+          onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.25))}
+          className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium"
+          disabled={zoomLevel >= 3}
+        >
+          Zoom +
+        </button>
+        <button
+          onClick={() => setZoomLevel(1)}
+          className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium"
+        >
+          Reset
+        </button>
+      </div>
+      
+      <div className="overflow-auto max-h-96 border border-gray-300 rounded">
         <svg width={svgWidth} height={svgHeight} className="border border-gray-300">
           <defs>
             {/* Padrão para chapas */}
@@ -1087,6 +1118,446 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               </g>
             ))}
             
+
+            {/* Parafusos nas guias (piso e teto) */}
+            {(() => {
+              const parafusosGuias: JSX.Element[] = []
+              const PLACA_LARGURA_GUIA = 1.2 // 1,20m por faixa
+              // Padrão de parafusos por faixa de 1,20m: 0,20 - 0,40 - [pula 0,60] - 0,80 - 1,00
+              const padraoParafusosPorFaixa = [0.20, 0.40, 0.80, 1.00]
+              
+              const numFaixasGuia = Math.ceil(parede.largura / PLACA_LARGURA_GUIA)
+              
+              for (let faixa = 0; faixa < numFaixasGuia; faixa++) {
+                const inicioFaixa = faixa * PLACA_LARGURA_GUIA
+                const fimFaixa = Math.min((faixa + 1) * PLACA_LARGURA_GUIA, parede.largura)
+                
+                padraoParafusosPorFaixa.forEach((posicaoRelativa, index) => {
+                  const xParafuso = (inicioFaixa + posicaoRelativa) * finalScale
+                  
+                  // Verificar se está dentro dos limites desta faixa e da parede
+                  if (xParafuso <= fimFaixa * finalScale && xParafuso <= finalWidth) {
+                    // Verificar se não está dentro de um vão (porta ou janela)
+                    let dentroDeVaoPiso = false
+                    let dentroDeVaoTeto = false
+                    
+                    for (const vao of vaos) {
+                      // Para guia do piso - verificar se está na altura da porta
+                      if (vao.tipo === 'porta' || vao.tipo === 'passagem') {
+                        if (xParafuso >= vao.x && xParafuso <= vao.x + vao.width) {
+                          dentroDeVaoPiso = true
+                        }
+                      }
+                      
+                      // Para guia do teto - verificar se está na área das janelas altas
+                      if (vao.tipo === 'janela' && parede.vaos.janelas.altura > 2.1) {
+                        if (xParafuso >= vao.x && xParafuso <= vao.x + vao.width) {
+                          dentroDeVaoTeto = true
+                        }
+                      }
+                    }
+                    
+                    // Parafuso na guia do PISO
+                    if (!dentroDeVaoPiso) {
+                      parafusosGuias.push(
+                        <circle
+                          key={`parafuso-guia-piso-${faixa}-${index}`}
+                          cx={xParafuso}
+                          cy={finalHeight - (0.025 * finalScale)} // 2,5cm do piso
+                          r={(0.005 * finalScale)} // 0.5cm de raio
+                          fill="#374151" // cinza padrão
+                          stroke="#1f2937"
+                          strokeWidth={0.5}
+                        />
+                      )
+                    }
+                    
+                    // Parafuso na guia do TETO
+                    if (!dentroDeVaoTeto) {
+                      parafusosGuias.push(
+                        <circle
+                          key={`parafuso-guia-teto-${faixa}-${index}`}
+                          cx={xParafuso}
+                          cy={0.025 * finalScale} // 2,5cm do teto
+                          r={(0.005 * finalScale)} // 0.5cm de raio
+                          fill="#374151" // cinza padrão
+                          stroke="#1f2937"
+                          strokeWidth={0.5}
+                        />
+                      )
+                    }
+                  }
+                })
+              }
+              
+              return parafusosGuias
+            })()}
+
+            {/* SISTEMA COMPLETO PARA LADO A - FAIXAS ÍMPARES E PARES COM SUBDIVISÃO */}
+            {ladoAtivo === 'A' && (() => {
+              const parafusosLadoA: JSX.Element[] = []
+              const numFaixas = Math.ceil(parede.largura / 1.2)
+              
+              // FUNÇÃO PARA DISTRIBUIR PARAFUSOS EM UM SEGMENTO
+              const distribuirParafusosSegmento = (yInicio: number, yFim: number, xPixel: number, chave: string) => {
+                // PARAFUSOS FIXOS: base e topo do segmento
+                const posicoes = [yInicio + 0.05, yFim - 0.05]
+                
+                // SUBDIVIR SE NECESSÁRIO
+                const distanciaTotal = (yFim - 0.05) - (yInicio + 0.05)
+                if (distanciaTotal > 0.30) { // Mais de 30cm
+                  const numDivisoes = Math.ceil(distanciaTotal / 0.30)
+                  const espacamento = distanciaTotal / numDivisoes
+                  
+                  // Adicionar parafusos intermediários
+                  for (let i = 1; i < numDivisoes; i++) {
+                    const yIntermediario = (yInicio + 0.05) + (i * espacamento)
+                    posicoes.push(yIntermediario)
+                  }
+                }
+                
+                // CRIAR OS PARAFUSOS
+                posicoes.forEach((y, index) => {
+                  if (y >= 0 && y <= parede.altura) {
+                    const yPixel = finalHeight - (y * finalScale)
+                    parafusosLadoA.push(
+                      <circle
+                        key={`parafuso-${chave}-${index}`}
+                        cx={xPixel}
+                        cy={yPixel}
+                        r={(0.005 * finalScale)}
+                        fill="#374151"
+                        stroke="#1f2937"
+                        strokeWidth={0.5}
+                      />
+                    )
+                  }
+                })
+              }
+              
+              // FUNÇÃO PARA CALCULAR JUNTAS (LADO A COM DESENCONTRO)
+              const calcularJuntasHorizontaisPorFaixa = (numeroFaixa: number) => {
+                const juntas = []
+                const PLACA_ALTURA = parseFloat(parede.especificacoes.tipoChapa) // 1.80 ou 2.40
+                const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
+                const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
+                
+                // LADO A: DESENCONTRO ENTRE FAIXAS PARES E ÍMPARES
+                if (numeroFaixa % 2 === 0) {
+                  // FAIXA ÍMPAR (0, 2, 4...): placa inteira embaixo + recorte em cima
+                  // Junta na altura da placa inteira
+                  juntas.push(PLACA_ALTURA) // Ex: 1.80m
+                  
+                  // Se há mais placas acima
+                  for (let nivel = 2; nivel <= placasInteirasNaAltura; nivel++) {
+                    const alturaJunta = nivel * PLACA_ALTURA
+                    if (alturaJunta < parede.altura) {
+                      juntas.push(alturaJunta)
+                    }
+                  }
+                } else {
+                  // FAIXA PAR (1, 3, 5...): recorte embaixo + placa inteira em cima
+                  // Junta na altura do recorte (sobra)
+                  if (sobraAltura > 0) {
+                    juntas.push(sobraAltura) // Ex: 0.90m
+                  }
+                  
+                  // Juntas das placas inteiras acima do recorte
+                  for (let nivel = 1; nivel <= placasInteirasNaAltura; nivel++) {
+                    const alturaJunta = sobraAltura + (nivel * PLACA_ALTURA)
+                    if (alturaJunta < parede.altura) {
+                      juntas.push(alturaJunta)
+                    }
+                  }
+                }
+                
+                return juntas
+              }
+
+              // Para cada faixa individual
+              for (let faixa = 0; faixa < numFaixas; faixa++) {
+                const inicioFaixa = faixa * 1.2
+                const fimFaixa = Math.min((faixa + 1) * 1.2, parede.largura)
+                
+                // USAR A FUNÇÃO REAL DE CÁLCULO DE JUNTAS
+                const juntasHorizontais = calcularJuntasHorizontaisPorFaixa(faixa)
+                
+                // BORDA ESQUERDA DA FAIXA (2cm da borda esquerda da faixa)
+                const xEsquerda = inicioFaixa + 0.02
+                if (xEsquerda <= parede.largura) {
+                  const xEsquerdaPixel = xEsquerda * finalScale
+                  const segmentos = [0, ...juntasHorizontais, parede.altura]
+                  
+                  for (let i = 0; i < segmentos.length - 1; i++) {
+                    distribuirParafusosSegmento(
+                      segmentos[i], 
+                      segmentos[i + 1], 
+                      xEsquerdaPixel, 
+                      `faixa-${faixa}-esquerda-${i}`
+                    )
+                  }
+                }
+                
+                // BORDA DIREITA DA FAIXA (2cm da borda direita da faixa)
+                const xDireita = fimFaixa - 0.02
+                if (xDireita > inicioFaixa && xDireita <= parede.largura) {
+                  const xDireitaPixel = xDireita * finalScale
+                  const segmentos = [0, ...juntasHorizontais, parede.altura]
+                  
+                  for (let i = 0; i < segmentos.length - 1; i++) {
+                    distribuirParafusosSegmento(
+                      segmentos[i], 
+                      segmentos[i + 1], 
+                      xDireitaPixel, 
+                      `faixa-${faixa}-direita-${i}`
+                    )
+                  }
+                }
+                
+                // MEIO DA FAIXA (onde passa o montante intermediário)
+                const xMeio = inicioFaixa + 0.60 // Meio da faixa de 1,20m
+                if (xMeio <= parede.largura && (fimFaixa - inicioFaixa) >= 1.0) { // Só se a faixa tiver pelo menos 1m
+                  const xMeioPixel = xMeio * finalScale
+                  const segmentos = [0, ...juntasHorizontais, parede.altura]
+                  
+                  for (let i = 0; i < segmentos.length - 1; i++) {
+                    distribuirParafusosSegmento(
+                      segmentos[i], 
+                      segmentos[i + 1], 
+                      xMeioPixel, 
+                      `faixa-${faixa}-meio-${i}`
+                    )
+                  }
+                }
+              }
+              
+              return parafusosLadoA
+            })()}
+
+
+
+            {/* Parafusos periféricos das bordas e entorno dos recortes */}
+            {ladoAtivo !== 'A' && (() => {
+              const parafusosPeriferia: JSX.Element[] = []
+              const PLACA_LARGURA = 1.2
+              const PLACA_ALTURA = parseFloat(parede.especificacoes.tipoChapa)
+              const MARGEM_BASE = 0.05 // 5cm da base
+              const MARGEM_JUNTA = 0.05 // 5cm da junta horizontal
+              const ESPACAMENTO_MAXIMO = 0.30 // 30cm máximo entre parafusos
+              
+              // Função para calcular posições das juntas horizontais específicas para cada faixa
+              const calcularJuntasHorizontaisPorFaixa = (numeroFaixa: number) => {
+                const juntas = []
+                
+                if (ladoAtivo === 'A' || ladoAtivo === 'A2' || parede.especificacoes.chapasPorLado === 'simples') {
+                  // LADO A/A2: CÓDIGO COPIADO 100% DO LADO B - SEM DESENCONTRO
+                  const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
+                  const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
+                  
+                  // LADO A = SEM DESENCONTRO (todas as faixas iguais)
+                  let recorteDesencontro = 0 // SEMPRE ZERO para Lado A
+                  
+                  // LÓGICA IDÊNTICA AO LADO B - MAS SEM DESENCONTRO
+                  const ehFaixaImpar = false // LADO A nunca tem desencontro, então sempre false
+                  
+                  if (ehFaixaImpar && recorteDesencontro > 0) {
+                    // Esta seção nunca executa no Lado A
+                    juntas.push(recorteDesencontro)
+                    
+                    const alturaRestante = parede.altura - recorteDesencontro
+                    const placasAcima = Math.floor(alturaRestante / PLACA_ALTURA)
+                    for (let nivel = 1; nivel <= placasAcima; nivel++) {
+                      const alturaJunta = recorteDesencontro + (nivel * PLACA_ALTURA)
+                      if (alturaJunta < parede.altura) {
+                        juntas.push(alturaJunta)
+                      }
+                    }
+                  } else {
+                    // LADO A sempre executa ESTA seção (igual faixas pares do Lado B)
+                    // Juntas das placas inteiras
+                    for (let nivel = 1; nivel <= placasInteirasNaAltura; nivel++) {
+                      const alturaJunta = nivel * PLACA_ALTURA
+                      if (alturaJunta < parede.altura) {
+                        juntas.push(alturaJunta)
+                      }
+                    }
+                  }
+                  
+                } else {
+                  // LADO B/B2: Juntas desencontradas - DIFERENTES ENTRE FAIXAS ÍMPARES E PARES
+                  const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
+                  const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
+                  
+                  let recorteDesencontro = 0
+                  if (sobraAltura >= 0.6) {
+                    recorteDesencontro = sobraAltura
+                  } else if (sobraAltura === 0 && placasInteirasNaAltura >= 2) {
+                    recorteDesencontro = PLACA_ALTURA / 2
+                  } else if (sobraAltura > 0 && sobraAltura < 0.6) {
+                    recorteDesencontro = sobraAltura
+                  }
+                  
+                  const ehFaixaImpar = numeroFaixa % 2 === 0 // faixas 0, 2, 4... (ímpares na contagem)
+                  
+                  if (ehFaixaImpar && recorteDesencontro > 0) {
+                    // FAIXA ÍMPAR: recorte embaixo + placas inteiras encima
+                    // Junta baixa do desencontro
+                    juntas.push(recorteDesencontro)
+                    
+                    // Juntas das placas inteiras acima
+                    const alturaRestante = parede.altura - recorteDesencontro
+                    const placasAcima = Math.floor(alturaRestante / PLACA_ALTURA)
+                    for (let nivel = 1; nivel <= placasAcima; nivel++) {
+                      const alturaJunta = recorteDesencontro + (nivel * PLACA_ALTURA)
+                      if (alturaJunta < parede.altura) {
+                        juntas.push(alturaJunta)
+                      }
+                    }
+                  } else {
+                    // FAIXA PAR ou sem desencontro: placas inteiras embaixo + recorte encima
+                    // Juntas das placas inteiras
+                    for (let nivel = 1; nivel <= placasInteirasNaAltura; nivel++) {
+                      const alturaJunta = nivel * PLACA_ALTURA
+                      if (alturaJunta < parede.altura) {
+                        juntas.push(alturaJunta)
+                      }
+                    }
+                    
+                    // Se há recorte encima (desencontro), não adiciona junta no topo
+                    // porque o recorte fica encima
+                  }
+                }
+                
+                return juntas
+              }
+              
+              // Função para distribuir parafusos em um segmento vertical
+              const distribuirParafusosSegmento = (alturaInicio: number, alturaFim: number, xPixel: number, chave: string) => {
+                const alturaSegmento = alturaFim - alturaInicio
+                
+                
+                // Sempre colocar parafusos a 5cm do início e fim do segmento
+                const posicoes = [alturaInicio + MARGEM_BASE]
+                
+                // Se o segmento for grande o suficiente, colocar parafuso no fim
+                if (alturaSegmento > MARGEM_BASE * 2) {
+                  posicoes.push(alturaFim - MARGEM_BASE)
+                }
+                
+                // Calcular quantos parafusos intermediários são necessários
+                const espacoIntermedio = alturaSegmento - (2 * MARGEM_BASE)
+                if (espacoIntermedio > ESPACAMENTO_MAXIMO) {
+                  const numIntermediarios = Math.floor(espacoIntermedio / ESPACAMENTO_MAXIMO)
+                  const espacamentoReal = espacoIntermedio / (numIntermediarios + 1)
+                  
+                  for (let i = 1; i <= numIntermediarios; i++) {
+                    posicoes.push(alturaInicio + MARGEM_BASE + (i * espacamentoReal))
+                  }
+                }
+                
+                // Ordenar posições e desenhar parafusos
+                posicoes.sort((a, b) => a - b)
+                posicoes.forEach((altura, index) => {
+                  const yPixel = finalHeight - (altura * finalScale)
+                  
+                  // FORÇAR CRIAÇÃO DOS PARAFUSOS - REMOVER TODAS AS CONDIÇÕES BLOQUEADORAS
+                  if (yPixel >= 0 && yPixel <= finalHeight) {
+                    parafusosPeriferia.push(
+                      <circle
+                        key={`parafuso-periferia-${chave}-${index}`}
+                        cx={xPixel}
+                        cy={yPixel}
+                        r={(0.005 * finalScale)}
+                        fill="#374151"
+                        stroke="#1f2937"
+                        strokeWidth={0.5}
+                      />
+                    )
+                  }
+                })
+              }
+              
+              // BORDAS DE CADA FAIXA DE CHAPA (1,20m) - COM JUNTAS ESPECÍFICAS POR FAIXA
+              const numFaixas = Math.ceil(parede.largura / PLACA_LARGURA)
+              
+              for (let faixa = 0; faixa < numFaixas; faixa++) {
+                const inicioFaixa = faixa * PLACA_LARGURA
+                const fimFaixa = Math.min((faixa + 1) * PLACA_LARGURA, parede.largura)
+                
+                // Calcular juntas horizontais específicas para esta faixa
+                const juntasHorizontaisFaixa = calcularJuntasHorizontaisPorFaixa(faixa)
+                
+                
+                
+                // BORDA ESQUERDA da faixa
+                const xEsquerda = (inicioFaixa + 0.02) * finalScale // 2cm da borda esquerda da faixa
+                const segmentosEsquerda = [0, ...juntasHorizontaisFaixa, parede.altura]
+                for (let i = 0; i < segmentosEsquerda.length - 1; i++) {
+                  distribuirParafusosSegmento(
+                    segmentosEsquerda[i], 
+                    segmentosEsquerda[i + 1], 
+                    xEsquerda, 
+                    `faixa-${faixa}-esquerda-${i}`
+                  )
+                }
+                
+                // BORDA DIREITA da faixa (só se não for a última faixa OU se for a última e tiver largura suficiente)
+                const larguraFaixa = fimFaixa - inicioFaixa
+                if (faixa < numFaixas - 1 || larguraFaixa > 0.1) { // Só se tiver pelo menos 10cm
+                  const xDireita = (fimFaixa - 0.02) * finalScale // 2cm da borda direita da faixa
+                  const segmentosDireita = [0, ...juntasHorizontaisFaixa, parede.altura]
+                  for (let i = 0; i < segmentosDireita.length - 1; i++) {
+                    distribuirParafusosSegmento(
+                      segmentosDireita[i], 
+                      segmentosDireita[i + 1], 
+                      xDireita, 
+                      `faixa-${faixa}-direita-${i}`
+                    )
+                  }
+                }
+                
+                // MEIO DA FAIXA (onde passa o montante intermediário)
+                const xMeio = inicioFaixa + 0.60 // Meio da faixa de 1,20m
+                if (xMeio <= parede.largura && (fimFaixa - inicioFaixa) >= 1.0) { // Só se a faixa tiver pelo menos 1m
+                  const xMeioPixel = xMeio * finalScale
+                  const segmentosMeio = [0, ...juntasHorizontaisFaixa, parede.altura]
+                  
+                  for (let i = 0; i < segmentosMeio.length - 1; i++) {
+                    distribuirParafusosSegmento(
+                      segmentosMeio[i], 
+                      segmentosMeio[i + 1], 
+                      xMeioPixel, 
+                      `faixa-${faixa}-meio-${i}`
+                    )
+                  }
+                }
+              }
+              
+              // ENTORNO DOS RECORTES (vãos)
+              vaos.forEach((vao, vaoIndex) => {
+                // Bordas verticais do vão (esquerda e direita)
+                const alturaVao = vao.height / finalScale
+                
+                // Borda esquerda do vão
+                distribuirParafusosSegmento(
+                  0, 
+                  alturaVao, 
+                  vao.x - (0.05 * finalScale), 
+                  `vao-esq-${vaoIndex}`
+                )
+                
+                // Borda direita do vão
+                distribuirParafusosSegmento(
+                  0, 
+                  alturaVao, 
+                  vao.x + vao.width + (0.05 * finalScale), 
+                  `vao-dir-${vaoIndex}`
+                )
+              })
+              
+              return parafusosPeriferia
+            })()}
+
             {/* Linhas tracejadas das juntas dentro dos vãos */}
             {vaos.map((vao, vaoIndex) => {
               const linhasJuntas: JSX.Element[] = []
@@ -1110,7 +1581,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                       x2={xJunta}
                       y2={vao.y + vao.height}
                       stroke="#9ca3af"
-                      strokeWidth="1"
+                      strokeWidth="0.75"
                       strokeDasharray="3,2"
                       opacity="0.7"
                     />
@@ -1141,7 +1612,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                           x2={vao.x + vao.width}
                           y2={yJunta}
                           stroke="#9ca3af"
-                          strokeWidth="1"
+                          strokeWidth="0.75"
                           strokeDasharray="3,2"
                           opacity="0.7"
                         />
@@ -1160,7 +1631,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                             x2={juntasOrdenadas[i + 1]}
                             y2={yJunta}
                             stroke="#9ca3af"
-                            strokeWidth="1"
+                            strokeWidth="0.75"
                             strokeDasharray="3,2"
                             opacity="0.7"
                           />
@@ -1202,7 +1673,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                           x2={vao.x + vao.width}
                           y2={yJuntaBaixa}
                           stroke="#9ca3af"
-                          strokeWidth="1"
+                          strokeWidth="0.75"
                           strokeDasharray="3,2"
                           opacity="0.7"
                         />
@@ -1220,7 +1691,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                             x2={juntasOrdenadas[i + 1]}
                             y2={yJuntaBaixa}
                             stroke="#9ca3af"
-                            strokeWidth="1"
+                            strokeWidth="0.75"
                             strokeDasharray="3,2"
                             opacity="0.7"
                           />
@@ -1248,7 +1719,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                             x2={vao.x + vao.width}
                             y2={yJunta}
                             stroke="#9ca3af"
-                            strokeWidth="1"
+                            strokeWidth="0.75"
                             strokeDasharray="3,2"
                             opacity="0.7"
                           />
@@ -1266,7 +1737,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                               x2={juntasOrdenadas[i + 1]}
                               y2={yJunta}
                               stroke="#9ca3af"
-                              strokeWidth="1"
+                              strokeWidth="0.75"
                               strokeDasharray="3,2"
                               opacity="0.7"
                             />
@@ -1292,7 +1763,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                             x2={vao.x + vao.width}
                             y2={yJunta}
                             stroke="#9ca3af"
-                            strokeWidth="1"
+                            strokeWidth="0.75"
                             strokeDasharray="3,2"
                             opacity="0.7"
                           />
@@ -1310,7 +1781,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
                               x2={juntasOrdenadas[i + 1]}
                               y2={yJunta}
                               stroke="#9ca3af"
-                              strokeWidth="1"
+                              strokeWidth="0.75"
                               strokeDasharray="3,2"
                               opacity="0.7"
                             />
@@ -1387,6 +1858,10 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
         <div className="flex items-center space-x-2">
           <div className="w-4 h-4 bg-gray-100 border border-gray-400"></div>
           <span className="text-gray-600">Chapas Drywall</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 bg-gray-700 rounded-full border border-gray-900"></div>
+          <span className="text-gray-600">Parafusos</span>
         </div>
         {parede.especificacoes.tratamentoAcustico !== 'nenhum' && (
           <div className="flex items-center space-x-2">

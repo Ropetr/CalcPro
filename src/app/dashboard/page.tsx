@@ -12,7 +12,8 @@ import {
   ArrowUpRight,
   FolderOpen,
   Star,
-  Plus
+  Plus,
+  Code2
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
@@ -109,6 +110,13 @@ const quickActions = [
     href: '/dashboard/analises',
     icon: BarChart3,
     color: 'bg-purple-100 text-purple-600',
+  },
+  {
+    name: 'Estrutura do Projeto',
+    description: 'Visualizar organização',
+    href: '/dashboard/estrutura-projeto',
+    icon: Code2,
+    color: 'bg-orange-100 text-orange-600',
   },
 ]
 

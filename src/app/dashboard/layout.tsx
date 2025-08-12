@@ -10,7 +10,8 @@ import {
   LogOut,
   Menu,
   X,
-  FolderOpen
+  FolderOpen,
+  Code2
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Calculadoras', href: '/dashboard/calculadoras', icon: Calculator },
   { name: 'Relatórios', href: '/dashboard/relatorios', icon: FileText },
   { name: 'Análises', href: '/dashboard/analises', icon: BarChart3 },
+  { name: 'Estrutura do Projeto', href: '/dashboard/estrutura-projeto', icon: Code2 },
   { name: 'Configurações', href: '/dashboard/configuracoes', icon: Settings },
 ]
 
