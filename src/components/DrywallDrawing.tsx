@@ -39,7 +39,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
 
 
   // Calcular vãos
-  const vaos = []
+  const vaos: any[] = []
   
   // Porta/Passagem - posição baseada no lado ativo
   if (parede.vaos.porta.tipo !== 'nenhuma' && parede.vaos.porta.largura && parede.vaos.porta.altura) {
@@ -1349,7 +1349,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               const calcularJuntasHorizontaisPorFaixa = (numeroFaixa: number) => {
                 const juntas = []
                 
-                if (ladoAtivo === 'A' || ladoAtivo === 'A2' || parede.especificacoes.chapasPorLado === 'simples') {
+                if ((ladoAtivo as string) === 'A' || (ladoAtivo as string) === 'A2' || parede.especificacoes.chapasPorLado === 'simples') {
                   // LADO A/A2: CÓDIGO COPIADO 100% DO LADO B - SEM DESENCONTRO
                   const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
                   const sobraAltura = parede.altura - (placasInteirasNaAltura * PLACA_ALTURA)
@@ -1592,7 +1592,7 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
               // Calcular juntas horizontais baseadas no lado ativo
               const PLACA_ALTURA = parseFloat(parede.especificacoes.tipoChapa)
               
-              if (ladoAtivo === 'A' || ladoAtivo === 'A2' || parede.especificacoes.chapasPorLado === 'simples') {
+              if ((ladoAtivo as string) === 'A' || (ladoAtivo as string) === 'A2' || parede.especificacoes.chapasPorLado === 'simples') {
                 // LADO A/A2: Juntas padrão (múltiplos da altura da chapa)
                 const placasInteirasNaAltura = Math.floor(parede.altura / PLACA_ALTURA)
                 

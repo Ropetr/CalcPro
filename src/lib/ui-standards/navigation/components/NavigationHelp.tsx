@@ -31,12 +31,12 @@ export const NavigationHelp: React.FC<NavigationHelpProps> = ({
         {helpText?.tab && (
           <div className="flex items-center space-x-1">
             <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd>
-            <span className="text-gray-500">{helpText.tab}</span>
+            <span className="text-gray-500">{helpText?.tab}</span>
           </div>
         )}
         <div className="flex items-center space-x-1">
           <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd>
-          <span className="text-gray-500">{helpText.enter}</span>
+          <span className="text-gray-500">{helpText?.enter}</span>
         </div>
       </div>
     )
@@ -48,13 +48,13 @@ export const NavigationHelp: React.FC<NavigationHelpProps> = ({
       <div className={`text-xs text-gray-500 mt-1 ${className}`}>
         {helpText?.tab && (
           <>
-            <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> {helpText.tab}
+            <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> {helpText?.tab}
             <br />
           </>
         )}
         <div className="flex items-center space-x-1">
           <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd>
-          <span>{helpText.enter}</span>
+          <span>{helpText?.enter}</span>
           {navigation.canCalculate && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
               ✓ Pronto
@@ -81,9 +81,9 @@ export const NavigationHelp: React.FC<NavigationHelpProps> = ({
               <div>
                 <p>• Use <strong>vírgula</strong> para casas decimais (ex: 4,50)</p>
                 {helpText?.tab && (
-                  <p>• Pressione <strong>Tab</strong> para {helpText.tab}</p>
+                  <p>• Pressione <strong>Tab</strong> para {helpText?.tab}</p>
                 )}
-                <p>• Pressione <strong>Enter</strong> para {helpText.enter}</p>
+                <p>• Pressione <strong>Enter</strong> para {helpText?.enter}</p>
               </div>
               <div>
                 <div className="flex items-center space-x-2 mb-2">

@@ -10,6 +10,8 @@ export { useKeyboardNavigation, navigationPresets } from './navigation/useKeyboa
 export { NavigationHelp, useNavigationHelp } from './navigation/components/NavigationHelp'
 export type { NavigationField, NavigationConfig, KeyboardNavigationHook } from './navigation/types'
 
+import { useKeyboardNavigation } from './navigation/useKeyboardNavigation'
+
 // === FORMATAÇÃO ===
 export { 
   useAutoFormat, 
@@ -42,11 +44,7 @@ export const useCalculatorStandards = () => {
   const navigation = useKeyboardNavigation()
   
   return {
-    navigation,
-    // Componente helper pré-configurado
-    StandardInput: (props: any) => <StandardInput {...props} />,
-    DimensionInput: (props: any) => <DimensionInput {...props} />,
-    NavigationHelp: (props: any) => <NavigationHelp navigation={navigation} {...props} />
+    navigation
   }
 }
 

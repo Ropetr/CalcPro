@@ -32,13 +32,7 @@ export default function DivisoriaNavalPage() {
   })
 
   // Sistema de navegação por teclado
-  const { 
-    currentFocusIndex, 
-    handleKeyDown, 
-    focusElement,
-    addItem,
-    calculate 
-  } = useKeyboardNavigation()
+  const navigation = useKeyboardNavigation()
 
   // Função para formatação automática
   const handleDimensionBlur = (field: string, value: string) => {
@@ -74,7 +68,7 @@ export default function DivisoriaNavalPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <NavigationHelp />
+              <NavigationHelp navigation={navigation} />
               <button className="btn-secondary flex items-center">
                 <FileText className="h-4 w-4 mr-2" />
                 Salvar Projeto
@@ -120,7 +114,7 @@ export default function DivisoriaNavalPage() {
                     value={dimensions.altura}
                     onChange={(e) => setDimensions({...dimensions, altura: e.target.value})}
                     onBlur={(e) => handleDimensionBlur('altura', e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={navigation.handleKeyDown}
                     data-nav-index={0}
                     className="input-field"
                     placeholder="Ex: 2,70"
@@ -133,7 +127,7 @@ export default function DivisoriaNavalPage() {
                     value={dimensions.largura}
                     onChange={(e) => setDimensions({...dimensions, largura: e.target.value})}
                     onBlur={(e) => handleDimensionBlur('largura', e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={navigation.handleKeyDown}
                     data-nav-index={1}
                     className="input-field"
                     placeholder="Ex: 3,50"

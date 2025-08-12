@@ -27,13 +27,7 @@ export default function PisoVinicilicoPage() {
   const [uso, setUso] = useState('residencial')
 
   // Sistema de navegação por teclado
-  const { 
-    currentFocusIndex, 
-    handleKeyDown, 
-    focusElement,
-    addItem,
-    calculate 
-  } = useKeyboardNavigation()
+  const navigation = useKeyboardNavigation()
 
   // Função para formatação automática
   const handleDimensionBlur = (field: string, value: string) => {
@@ -69,7 +63,7 @@ export default function PisoVinicilicoPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <NavigationHelp />
+              <NavigationHelp navigation={navigation} />
               <button className="btn-secondary flex items-center">
                 <FileText className="h-4 w-4 mr-2" />
                 Salvar Projeto
@@ -148,7 +142,7 @@ export default function PisoVinicilicoPage() {
                     value={dimensions.comprimento}
                     onChange={(e) => setDimensions({...dimensions, comprimento: e.target.value})}
                     onBlur={(e) => handleDimensionBlur('comprimento', e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={navigation.handleKeyDown}
                     data-nav-index={0}
                     className="input-field"
                     placeholder="Ex: 4,50"
@@ -161,7 +155,7 @@ export default function PisoVinicilicoPage() {
                     value={dimensions.largura}
                     onChange={(e) => setDimensions({...dimensions, largura: e.target.value})}
                     onBlur={(e) => handleDimensionBlur('largura', e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={navigation.handleKeyDown}
                     data-nav-index={1}
                     className="input-field"
                     placeholder="Ex: 3,50"

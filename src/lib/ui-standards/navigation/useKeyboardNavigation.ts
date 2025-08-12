@@ -10,10 +10,47 @@ export const useKeyboardNavigation = (): KeyboardNavigationHook => {
   const [config, setConfig] = useState<NavigationConfig | null>(null)
   const [canCalculate, setCanCalculate] = useState(false)
 
+  // Funções expostas do hook
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (!config) return
+    
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement
+    const fieldName = target?.getAttribute('data-field') || target?.getAttribute('data-nav-index')
+    
+    if (!fieldName) return
+
+    // TAB: Adicionar novo item
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      config.onTabAction()
+    }
+
+    // ENTER: Calcular (se dados estão válidos)
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      
+      if (canCalculate) {
+        config.onEnterAction()
+      }
+    }
+  }
+
+  const addItem = () => {
+    if (config) {
+      config.onTabAction()
+    }
+  }
+
+  const calculate = () => {
+    if (config && canCalculate) {
+      config.onEnterAction()
+    }
+  }
+
   useEffect(() => {
     if (!config) return
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const internalHandleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLInputElement | HTMLTextAreaElement
       const fieldName = target?.getAttribute('data-field')
       
@@ -102,7 +139,7 @@ export const useKeyboardNavigation = (): KeyboardNavigationHook => {
     }
 
     // Listener para eventos de teclado
-    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', internalHandleKeyDown)
     
     // Listener para mudanças nos campos (validação em tempo real)
     const handleInputChange = () => updateCanCalculate()
@@ -118,7 +155,7 @@ export const useKeyboardNavigation = (): KeyboardNavigationHook => {
     updateCanCalculate()
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keydown', internalHandleKeyDown)
       
       // Limpar listeners dos campos
       config.fields.forEach(field => {
@@ -134,7 +171,10 @@ export const useKeyboardNavigation = (): KeyboardNavigationHook => {
   return {
     config,
     setConfig,
-    canCalculate
+    canCalculate,
+    handleKeyDown,
+    addItem,
+    calculate
   }
 }
 

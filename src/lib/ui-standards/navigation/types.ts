@@ -37,4 +37,10 @@ export interface KeyboardNavigationHook {
   setConfig: (config: NavigationConfig | null) => void
   /** Status se pode calcular */
   canCalculate: boolean
+  /** Handler de teclado */
+  handleKeyDown: (e: React.KeyboardEvent) => void
+  /** Função para adicionar item (TAB) */
+  addItem: () => void
+  /** Função para calcular (ENTER) */
+  calculate: () => void
 }
