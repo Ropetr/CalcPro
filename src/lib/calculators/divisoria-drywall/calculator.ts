@@ -297,65 +297,231 @@ export class DrywallCalculator {
   }
 
   /**
-   * Calcula perfis metálicos necessários
+   * Calcula perfis metálicos necessários com sistema complexo de aproveitamento
    */
   private calcularPerfis(paredes: MedidaParede[], modalidade: 'abnt' | 'basica'): CalculoMaterial[] {
     const perfis: CalculoMaterial[] = []
     
-    let totalGuias48 = 0, totalMontantes48 = 0
-    let totalGuias70 = 0, totalMontantes70 = 0  
-    let totalGuias90 = 0, totalMontantes90 = 0
+    // Separar cálculos de guias e montantes
+    const resultadoGuias = this.calcularGuiasComplexo(paredes)
+    const resultadoMontantes = this.calcularMontantes(paredes)
+    
+    // Combinar resultados
+    return [...resultadoGuias, ...resultadoMontantes]
+  }
+
+  /**
+   * Sistema complexo de cálculo de guias com aproveitamento
+   */
+  private calcularGuiasComplexo(paredes: MedidaParede[]): CalculoMaterial[] {
+    const BARRA_3M = 3.0
+    
+    // Estrutura para organizar por tipo de perfil
+    interface DadosGuia {
+      metrosNecessarios: number
+      recortes: Array<{
+        comprimento: number
+        quantidade: number
+        origem: string
+        motivo: string
+      }>
+      sobras: Array<{
+        comprimento: number
+        quantidade: number
+        aproveitavel: boolean
+      }>
+    }
+    
+    const guiasPorTipo: Record<string, DadosGuia> = {
+      '48': { metrosNecessarios: 0, recortes: [], sobras: [] },
+      '70': { metrosNecessarios: 0, recortes: [], sobras: [] },
+      '90': { metrosNecessarios: 0, recortes: [], sobras: [] }
+    }
+    
+    // FASE 1: Calcular necessidades por parede
+    paredes.forEach(parede => {
+      const tipo = parede.especificacoes.tipoMontante
+      const dados = guiasPorTipo[tipo]
+      
+      // Comprimento base: piso + teto
+      let comprimentoPiso = parede.largura
+      let comprimentoTeto = parede.largura
+      
+      // DESCONTO DE VÃOS - Sistema inteligente
+      if (parede.vaos.porta.tipo !== 'nenhuma' && parede.vaos.porta.largura) {
+        // Porta: desconta apenas do piso (teto permanece completo)
+        comprimentoPiso -= parede.vaos.porta.largura
+        
+        // Gera recorte aproveitável da porta
+        dados.recortes.push({
+          comprimento: parede.vaos.porta.largura,
+          quantidade: 1,
+          origem: `${parede.nome} - Piso`,
+          motivo: 'Desconto porta'
+        })
+      }
+      
+      // Janelas: desconta do teto se for janela alta
+      if (parede.vaos.janelas.quantidade > 0) {
+        const larguraJanelas = parede.vaos.janelas.largura
+        
+        // Se janela vai até o teto (altura > 2.1m), desconta do teto
+        if (parede.vaos.janelas.altura > 2.1) {
+          comprimentoTeto -= larguraJanelas
+          
+          dados.recortes.push({
+            comprimento: larguraJanelas,
+            quantidade: 1,
+            origem: `${parede.nome} - Teto`,
+            motivo: 'Desconto janelas altas'
+          })
+        }
+      }
+      
+      dados.metrosNecessarios += comprimentoPiso + comprimentoTeto
+    })
+    
+    // FASE 2: Sistema de aproveitamento global
+    Object.keys(guiasPorTipo).forEach(tipo => {
+      const dados = guiasPorTipo[tipo]
+      
+      if (dados.metrosNecessarios === 0) return
+      
+      // Separar recortes por tamanho para otimizar aproveitamento
+      const recortesGrandes = dados.recortes.filter(r => r.comprimento >= 1.5) // ≥ 1,5m
+      const recortesMedios = dados.recortes.filter(r => r.comprimento >= 0.8 && r.comprimento < 1.5) // 0,8m - 1,5m
+      const recortesPequenos = dados.recortes.filter(r => r.comprimento < 0.8) // < 0,8m
+      
+      // Calcular aproveitamento
+      let metrosAproveitados = 0
+      let detalhesAproveitamento: string[] = []
+      
+      // Aproveitar recortes grandes (podem ser usados como guias normais)
+      recortesGrandes.forEach(recorte => {
+        const aproveitamento = Math.min(recorte.comprimento * recorte.quantidade, dados.metrosNecessarios - metrosAproveitados)
+        if (aproveitamento > 0) {
+          metrosAproveitados += aproveitamento
+          detalhesAproveitamento.push(`${aproveitamento.toFixed(1)}m de recortes grandes`)
+        }
+      })
+      
+      // Aproveitar recortes médios (podem ser emendados)
+      if (metrosAproveitados < dados.metrosNecessarios) {
+        let metrosRecortesMedios = recortesMedios.reduce((total, r) => total + (r.comprimento * r.quantidade), 0)
+        const aproveitamento = Math.min(metrosRecortesMedios * 0.8, dados.metrosNecessarios - metrosAproveitados) // 80% de aproveitamento
+        if (aproveitamento > 0) {
+          metrosAproveitados += aproveitamento
+          detalhesAproveitamento.push(`${aproveitamento.toFixed(1)}m de recortes médios`)
+        }
+      }
+      
+      // Metros restantes que precisam de barras novas
+      const metrosRestantes = dados.metrosNecessarios - metrosAproveitados
+      const barrasNecessarias = Math.ceil(metrosRestantes / BARRA_3M)
+      
+      // Calcular sobras das barras novas
+      const metrosSobra = (barrasNecessarias * BARRA_3M) - metrosRestantes
+      if (metrosSobra > 0.3) { // Sobras aproveitáveis > 30cm
+        dados.sobras.push({
+          comprimento: metrosSobra,
+          quantidade: 1,
+          aproveitavel: metrosSobra > 0.8
+        })
+      }
+      
+      // Montar observações detalhadas
+      let observacoes = `${dados.metrosNecessarios.toFixed(1)}m necessários`
+      if (metrosAproveitados > 0) {
+        observacoes += ` (-${metrosAproveitados.toFixed(1)}m aproveitados)`
+        observacoes += ` = ${metrosRestantes.toFixed(1)}m novas`
+      }
+      if (detalhesAproveitamento.length > 0) {
+        observacoes += ` [${detalhesAproveitamento.join(', ')}]`
+      }
+      if (dados.sobras.length > 0) {
+        const sobraTotal = dados.sobras.reduce((total, s) => total + s.comprimento, 0)
+        observacoes += ` (Sobra: ${sobraTotal.toFixed(1)}m)`
+      }
+      
+      perfis.push({
+        item: `Perfil Guia ${tipo}mm`,
+        descricao: `Perfil Guia ${tipo}mm - 3,00m`,
+        quantidade: barrasNecessarias,
+        unidade: 'un',
+        observacoes
+      })
+    })
+    
+    return perfis.filter(p => p.quantidade > 0)
+  }
+
+  /**
+   * Cálculo de montantes (mantém lógica anterior)
+   */
+  private calcularMontantes(paredes: MedidaParede[]): CalculoMaterial[] {
+    const perfis: CalculoMaterial[] = []
+    
+    let totalMontantes48 = 0, totalMontantes70 = 0, totalMontantes90 = 0
     
     paredes.forEach(parede => {
-      const largura = parede.largura
-      const altura = parede.altura
-      
-      // Guias: 2 x largura (piso e teto)
-      const metrosGuia = largura * 2
-      
-      // Montantes: espaçados conforme especificação + extremidades
+      // CÁLCULO DE MONTANTES EM PEÇAS
       const espacamento = parseFloat(parede.especificacoes.espacamentoMontante)
-      const quantidadeMontantes = Math.ceil(largura / espacamento) + 1
-      const metrosMontante = quantidadeMontantes * altura
+      const divisao = parede.largura / espacamento
+      
+      // Se resultado é inteiro: soma +1, se fracionado: arredonda para cima + 1
+      let quantidadeMontantes = Number.isInteger(divisao) 
+        ? Math.floor(divisao) + 1 
+        : Math.ceil(divisao) + 1
+      
+      // +1 montante para cada porta
+      if (parede.vaos.porta.tipo !== 'nenhuma') {
+        quantidadeMontantes += 1
+      }
+      
+      // +1 montante para cada janela
+      if (parede.vaos.janelas.quantidade > 0) {
+        quantidadeMontantes += parede.vaos.janelas.quantidade
+      }
       
       const tipoMontante = parede.especificacoes.tipoMontante
       
       switch (tipoMontante) {
-        case '48':
-          totalGuias48 += metrosGuia
-          totalMontantes48 += metrosMontante
-          break
-        case '70':
-          totalGuias70 += metrosGuia
-          totalMontantes70 += metrosMontante
-          break
-        case '90':
-          totalGuias90 += metrosGuia
-          totalMontantes90 += metrosMontante
-          break
+        case '48': totalMontantes48 += quantidadeMontantes; break
+        case '70': totalMontantes70 += quantidadeMontantes; break
+        case '90': totalMontantes90 += quantidadeMontantes; break
       }
     })
     
-    // Converter metros para barras (3m por barra)
-    const adicionarPerfil = (metros: number, tipo: string, largura: string) => {
-      if (metros > 0) {
-        const barras = Math.ceil(metros / 3)
-        perfis.push({
-          item: `Perfil ${tipo} ${largura}`,
-          descricao: `Perfil ${tipo} ${largura} - 3,00m`,
-          quantidade: barras,
-          unidade: 'un',
-          observacoes: `${metros.toFixed(1)}m necessários`
-        })
-      }
+    // Adicionar montantes
+    if (totalMontantes48 > 0) {
+      perfis.push({
+        item: 'Perfil Montante 48mm',
+        descricao: 'Perfil Montante 48mm - 3,00m',
+        quantidade: totalMontantes48,
+        unidade: 'un',
+        observacoes: 'Estrutura vertical'
+      })
     }
     
-    adicionarPerfil(totalGuias48, 'Guia', '48mm')
-    adicionarPerfil(totalMontantes48, 'Montante', '48mm')
-    adicionarPerfil(totalGuias70, 'Guia', '70mm')
-    adicionarPerfil(totalMontantes70, 'Montante', '70mm')
-    adicionarPerfil(totalGuias90, 'Guia', '90mm')
-    adicionarPerfil(totalMontantes90, 'Montante', '90mm')
+    if (totalMontantes70 > 0) {
+      perfis.push({
+        item: 'Perfil Montante 70mm',
+        descricao: 'Perfil Montante 70mm - 3,00m',
+        quantidade: totalMontantes70,
+        unidade: 'un',
+        observacoes: 'Estrutura vertical'
+      })
+    }
+    
+    if (totalMontantes90 > 0) {
+      perfis.push({
+        item: 'Perfil Montante 90mm',
+        descricao: 'Perfil Montante 90mm - 3,00m',
+        quantidade: totalMontantes90,
+        unidade: 'un',
+        observacoes: 'Estrutura vertical'
+      })
+    }
     
     return perfis
   }
