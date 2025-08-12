@@ -35,7 +35,8 @@
       "Bash(cat:*)",
       "Bash(npx tsc:*)",
       "Bash(npx kill-port:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git clean:*)"
     ],
     "deny": []
   }

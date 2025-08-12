@@ -159,14 +159,14 @@ export default function DivisoriaDrywallPage() {
     try {
       // Converter medidas para o formato esperado pela calculadora
       const paredesParaCalculo: MedidaParedeType[] = medidas
-        .filter(medida => parseFloat(medida.altura) > 0 && parseFloat(medida.largura) > 0)
+        .filter(medida => parseFloat(medida.altura.replace(',', '.')) > 0 && parseFloat(medida.largura.replace(',', '.')) > 0)
         .map(medida => ({
           id: medida.id,
           nome: medida.nome,
-          altura: parseFloat(medida.altura),
-          largura: parseFloat(medida.largura),
+          altura: parseFloat(medida.altura.replace(',', '.')),
+          largura: parseFloat(medida.largura.replace(',', '.')),
           descricao: medida.descricao,
-          area: parseFloat(medida.altura) * parseFloat(medida.largura),
+          area: parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.')),
           especificacoes: {
             tipoChapa: medida.especificacoes.tipoChapa,
             tipoMontante: medida.especificacoes.tipoMontante,
@@ -178,13 +178,13 @@ export default function DivisoriaDrywallPage() {
           vaos: {
             porta: {
               tipo: medida.vaos.porta.tipo,
-              largura: medida.vaos.porta.tipo !== 'nenhuma' ? parseFloat(medida.vaos.porta.largura) : undefined,
-              altura: medida.vaos.porta.tipo !== 'nenhuma' ? parseFloat(medida.vaos.porta.altura) : undefined
+              largura: medida.vaos.porta.tipo !== 'nenhuma' ? parseFloat(medida.vaos.porta.largura.replace(',', '.')) : undefined,
+              altura: medida.vaos.porta.tipo !== 'nenhuma' ? parseFloat(medida.vaos.porta.altura.replace(',', '.')) : undefined
             },
             janelas: {
               quantidade: parseInt(medida.vaos.janelas.quantidade) || 0,
-              largura: parseFloat(medida.vaos.janelas.largura) || 1.20,
-              altura: parseFloat(medida.vaos.janelas.altura) || 1.05
+              largura: parseFloat(medida.vaos.janelas.largura.replace(',', '.')) || 1.20,
+              altura: parseFloat(medida.vaos.janelas.altura.replace(',', '.')) || 1.05
             },
             preenchido: medida.vaos.preenchido
           }
@@ -272,8 +272,8 @@ export default function DivisoriaDrywallPage() {
           
           // Calcular área automaticamente
           if (campo === 'altura' || campo === 'largura') {
-            const altura = parseFloat(campo === 'altura' ? valor : updated.altura) || 0
-            const largura = parseFloat(campo === 'largura' ? valor : updated.largura) || 0
+            const altura = parseFloat((campo === 'altura' ? valor : updated.altura).replace(',', '.')) || 0
+            const largura = parseFloat((campo === 'largura' ? valor : updated.largura).replace(',', '.')) || 0
             updated.area = altura * largura
           }
           return updated
