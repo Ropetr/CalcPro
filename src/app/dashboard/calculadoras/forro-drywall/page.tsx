@@ -632,19 +632,6 @@ export default function ForroDrywallPage() {
                       })}
                     </div>
                     
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-gray-600">
-                          Total de {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
-                        </div>
-                        <div className="text-lg font-semibold text-gray-900">
-                          {areaTotal.toFixed(2)} m²
-                        </div>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Pressione <kbd className="px-1 py-0.5 bg-white text-gray-600 text-xs rounded">Tab</kbd> para nova medida ou <kbd className="px-1 py-0.5 bg-white text-gray-600 text-xs rounded">Enter</kbd> para calcular
-                      </div>
-                    </div>
                   </div>
                 )}
 
