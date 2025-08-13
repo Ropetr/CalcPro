@@ -223,6 +223,33 @@ const formatarQuantidade = (valor: string): string => {
 
 ## 🔧 Configurações Especiais
 
+### Navegação por Teclado
+```typescript
+// Foco automático no primeiro campo após TAB
+// Implementado automaticamente no hook useKeyboardNavigation
+const navigation = useKeyboardNavigation()
+
+// A função addItem() agora inclui foco automático:
+// - Executa onTabAction()
+// - Foca automaticamente no primeiro campo (largura)
+// - Funciona com diferentes padrões de seletor
+```
+
+### Seletores de Foco Suportados
+```typescript
+// O sistema tenta automaticamente estes seletores em ordem:
+const possibleSelectors = [
+  // Padrão forro-pvc (cômodos)
+  '[data-comodo-id]:first-child [data-ambiente-id] input[type="text"]:first-of-type',
+  // Padrão outras calculadoras (medidas)
+  '[data-medida-id]:first-child input[type="text"]',
+  // Padrão alternativo por data-field
+  '[data-field="largura"]:first-of-type',
+  // Padrão geral (primeiro input de texto)
+  'input[type="text"]:first-of-type'
+]
+```
+
 ### Botão Flutuante
 ```jsx
 {/* Ocultar na aba INFO */}
@@ -250,6 +277,7 @@ const itensValidos = itens.filter(item =>
 - [ ] CSS classes aplicadas
 - [ ] Conteúdo da aba INFO
 - [ ] Formatação automática de campos
+- [ ] **Navegação por teclado com foco automático** ✅
 - [ ] Ocultação de elementos na aba INFO
 - [ ] Contagem inteligente de itens válidos
 - [ ] Testes de funcionalidade

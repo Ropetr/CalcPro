@@ -38,12 +38,46 @@ export const useKeyboardNavigation = (): KeyboardNavigationHook => {
   const addItem = () => {
     if (config) {
       config.onTabAction()
+      
+      // Focar automaticamente no primeiro campo (largura) do novo item após criação
+      setTimeout(() => {
+        focusFirstFieldOfNewItem()
+      }, 100)
     }
   }
 
   const calculate = () => {
     if (config && canCalculate) {
       config.onEnterAction()
+    }
+  }
+
+  // Função para focar no primeiro campo do item mais recentemente adicionado
+  const focusFirstFieldOfNewItem = () => {
+    if (!config) return
+    
+    const firstField = config.fields[0]
+    if (!firstField) return
+
+    // Buscar padrões comuns de seletores para diferentes tipos de calculadora
+    const possibleSelectors = [
+      // Padrão forro-pvc (cômodos)
+      '[data-comodo-id]:first-child [data-ambiente-id] input[type="text"]:first-of-type',
+      // Padrão outras calculadoras (medidas)
+      '[data-medida-id]:first-child input[type="text"]',
+      // Padrão alternativo por data-field
+      `[data-field="${firstField.name}"]:first-of-type`,
+      // Padrão geral (primeiro input de texto)
+      'input[type="text"]:first-of-type'
+    ]
+
+    for (const selector of possibleSelectors) {
+      const input = document.querySelector(selector) as HTMLInputElement
+      if (input) {
+        input.focus()
+        input.select() // Selecionar o texto se houver
+        break
+      }
     }
   }
 
@@ -73,6 +107,11 @@ export const useKeyboardNavigation = (): KeyboardNavigationHook => {
           }
           
           config.onTabAction()
+          
+          // Focar automaticamente no primeiro campo (largura) do novo item após criação
+          setTimeout(() => {
+            focusFirstFieldOfNewItem()
+          }, 100)
         }
       }
 
