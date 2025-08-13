@@ -6,9 +6,10 @@ import { MedidaParede } from '@/lib/calculators/divisoria-drywall/types'
 interface DrywallDrawingProps {
   parede: MedidaParede
   scale?: number
+  numeroParede?: number
 }
 
-export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingProps) {
+export default function DrywallDrawing({ parede, scale = 50, numeroParede }: DrywallDrawingProps) {
   // Estado para controlar qual lado está sendo visualizado
   const [ladoAtivo, setLadoAtivo] = useState<'A' | 'A2' | 'B' | 'B2'>('A')
   // Estado para controlar o zoom
@@ -107,10 +108,19 @@ export default function DrywallDrawing({ parede, scale = 50 }: DrywallDrawingPro
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <div className="mb-4">
-        <h3 className="font-semibold text-gray-900 mb-2">{parede.nome}</h3>
-        <div className="text-sm text-gray-600">
-          {parede.largura}m × {parede.altura}m | Montante {parede.especificacoes.tipoMontante}mm | {parede.especificacoes.chapasPorLado} chapa(s) por lado
+      <div className="mb-4 flex items-center space-x-3">
+        {numeroParede && (
+          <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-medium text-primary-600">{numeroParede}</span>
+          </div>
+        )}
+        <div className="flex-1">
+          <div className="text-sm text-gray-600">
+            {parede.largura}m × {parede.altura}m | Montante {parede.especificacoes.tipoMontante}mm | {parede.especificacoes.chapasPorLado} chapa(s) por lado
+          </div>
+          {parede.nome && (
+            <div className="text-xs text-gray-500 mt-1">{parede.nome}</div>
+          )}
         </div>
       </div>
 

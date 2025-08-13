@@ -618,7 +618,7 @@ export default function DivisoriaDrywallPage() {
                         {/* Desenhos Técnicos das Paredes */}
                         <div className="space-y-6">
                           {resultadoCalculo.paredes.map((parede, index) => (
-                            <DrywallDrawing key={parede.id} parede={parede} />
+                            <DrywallDrawing key={parede.id} parede={parede} numeroParede={index + 1} />
                           ))}
                         </div>
                       </div>
