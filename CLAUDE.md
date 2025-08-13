@@ -18,10 +18,14 @@
 - **URL produção:** https://calcpro.app.br
 - **Build:** `npm run build` (Next.js 14 + TypeScript + output: export)
 
-### **Padrões de Interface Estabelecidos**
-- **Numeração:** Crescente de cima para baixo (novo item = maior número visual)
-- **Foco automático:** TAB no campo descrição = cursor automático na largura do próximo
-- **Interface limpa:** SEM nomes redundantes "Parede 01", "Ambiente 01" - apenas círculos numerados
+### **Layout Padrão Consolidado (2025-01-13)**
+- **Campo multiplicador ×:** Pequeno campo ao lado da largura para quantidade (×4 = 4 paredes iguais)
+- **Checkbox altura fixa:** Auto-preenchimento opcional da altura nas próximas medidas  
+- **Grid 3 colunas:** Largura (com ×) | Altura (com ☑fixar) | Descrição
+- **Área + quantidade:** Exibida ao lado da numeração colorida (① 24,50 m² (4× paredes))
+- **Navegação TAB:** largura → altura → descrição (campos auxiliares fora do TAB)
+- **Interface limpa:** SEM nomes redundantes - apenas círculos numerados + área calculada
+- **Busca/engrenagem:** Alinhadas com abas (pb-4) para harmonia visual
 - **Formatação brasileira:** "3,50" não "3.50" - `parseFloat(valor.replace(',', '.'))`
 
 ## 🏗️ **ARQUITETURA ATUAL**

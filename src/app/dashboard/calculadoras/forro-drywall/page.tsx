@@ -29,6 +29,7 @@ interface Medida {
   nome: string
   altura: string
   largura: string
+  quantidade: number  // ✨ Nova propriedade para multiplicação
   descricao: string
   area: number
   especificacoes: {
@@ -85,7 +86,8 @@ export default function ForroDrywallPage() {
     return formatted
   }
 
-  // Estado para lembrar última altura usada (auto-preenchimento)
+  // Estados para auto-preenchimento opcional (ativado pelo usuário)
+  const [alturaFixaAtivada, setAlturaFixaAtivada] = useState<boolean>(false)
   const [ultimaAlturaUsada, setUltimaAlturaUsada] = useState<string>('')
 
   const [medidas, setMedidas] = useState<Medida[]>([
@@ -94,6 +96,7 @@ export default function ForroDrywallPage() {
       nome: '',
       altura: '',
       largura: '',
+      quantidade: 1,  // ✨ Padrão: 1 forro
       descricao: '',
       area: 0,
       especificacoes: {
@@ -143,7 +146,7 @@ export default function ForroDrywallPage() {
         adicionarMedida()
         // Focar no primeiro campo (largura) da nova medida após um pequeno delay
         setTimeout(() => {
-          const novoInput = document.querySelector('[data-medida-id]:last-child input[type="text"]') as HTMLInputElement
+          const novoInput = document.querySelector('[data-medida-id]:last-child input[data-nav-index="0"]') as HTMLInputElement
           if (novoInput) {
             novoInput.focus()
           }
@@ -247,8 +250,9 @@ export default function ForroDrywallPage() {
     const novoItem: Medida = {
       id: novaId,
       nome: '',
-      altura: ultimaAlturaUsada, // ✨ Auto-preenchimento da altura
-      largura: '',
+      altura: alturaFixaAtivada ? ultimaAlturaUsada : '', // ✨ Altura fixa se ativada
+      largura: '', // Largura sempre vazia para novo forro
+      quantidade: 1, // ✨ Padrão: 1 forro
       descricao: '',
       area: 0,
       especificacoes: especificacoesPadrao ? {
@@ -294,11 +298,6 @@ export default function ForroDrywallPage() {
   }
 
   const atualizarMedida = (id: string, campo: keyof Medida, valor: any) => {
-    // ✨ Salvar altura para auto-preenchimento dos próximos ambientes
-    if (campo === 'altura' && typeof valor === 'string' && valor.trim()) {
-      setUltimaAlturaUsada(valor)
-    }
-    
     setMedidas(medidas.map(medida => {
       if (medida.id === id) {
         if (campo === 'especificacoes') {
@@ -314,11 +313,12 @@ export default function ForroDrywallPage() {
         } else {
           const updated = { ...medida, [campo]: valor }
           
-          // Calcular área automaticamente
-          if (campo === 'altura' || campo === 'largura') {
+          // Calcular área automaticamente (incluindo quantidade)
+          if (campo === 'altura' || campo === 'largura' || campo === 'quantidade') {
             const altura = parseFloat((campo === 'altura' ? valor : updated.altura).replace(',', '.')) || 0
             const largura = parseFloat((campo === 'largura' ? valor : updated.largura).replace(',', '.')) || 0
-            updated.area = altura * largura
+            const quantidade = campo === 'quantidade' ? valor : updated.quantidade
+            updated.area = altura * largura * quantidade
           }
           return updated
         }
@@ -328,6 +328,7 @@ export default function ForroDrywallPage() {
   }
 
   const areaTotal = medidas.reduce((total, medida) => total + medida.area, 0)
+  const totalForros = medidas.reduce((total, medida) => total + medida.quantidade, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (medida: Medida) => {
@@ -424,17 +425,17 @@ export default function ForroDrywallPage() {
                   {areaTotal.toFixed(2)} m²
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {medidas.length} ambiente{medidas.length !== 1 ? 's' : ''}
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow p-6 text-center">
                 <Building2 className="h-8 w-8 text-green-600 mx-auto mb-3" />
-                <div className="text-sm text-gray-600">Ambientes</div>
-                <div className="text-2xl font-bold text-gray-900">{medidas.length}</div>
+                <div className="text-sm text-gray-600">Forros</div>
+                <div className="text-2xl font-bold text-gray-900">{totalForros}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova medida
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                   <br />
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova • <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
                 </div>
               </div>
             </div>
@@ -531,16 +532,12 @@ export default function ForroDrywallPage() {
                           <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-medida-id={medida.id}>
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-blue-600">{displayNumber}</span>
-                                </div>
-                            <input
-                              type="text"
-                              value={medida.nome}
-                              onChange={(e) => atualizarMedida(medida.id, 'nome', e.target.value)}
-                              className="text-sm font-medium bg-transparent border-none focus:ring-0 p-0"
-                              placeholder="Nome do ambiente"
-                            />
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-medium text-blue-600">{displayNumber}</span>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {medida.area.toFixed(2)} m² {medida.quantidade > 1 ? `(${medida.quantidade}× forros)` : ''}
+                              </div>
                           </div>
                           <div className="flex items-center space-x-2">
                             <div className="flex items-center space-x-1 mr-3">
@@ -576,9 +573,6 @@ export default function ForroDrywallPage() {
                                 <Flag className="h-3 w-3" />
                               </button>
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {medida.area.toFixed(2)} m²
-                            </div>
                             {medidas.length > 1 && (
                               <button
                                 onClick={() => removerMedida(medida.id)}
@@ -592,7 +586,23 @@ export default function ForroDrywallPage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Largura (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs text-gray-500">×</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="99"
+                                  value={medida.quantidade === 1 ? '' : medida.quantidade}
+                                  onChange={(e) => atualizarMedida(medida.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                  className="w-14 h-5 text-xs border border-gray-300 rounded pl-1 pr-1 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder=""
+                                  title="Quantidade de forros iguais (deixe vazio para 1 forro)"
+                                  tabIndex={-1}
+                                />
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.largura}
@@ -608,14 +618,37 @@ export default function ForroDrywallPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Altura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Altura (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="checkbox"
+                                  checked={alturaFixaAtivada}
+                                  onChange={(e) => setAlturaFixaAtivada(e.target.checked)}
+                                  className="w-3 h-3 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
+                                  title="Usar última altura inserida nos próximos forros"
+                                  tabIndex={-1}
+                                />
+                                <span className="text-xs text-gray-500" title="Usar última altura inserida nos próximos forros">fixar</span>
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.altura}
-                              onChange={(e) => atualizarMedida(medida.id, 'altura', e.target.value)}
+                              onChange={(e) => {
+                                atualizarMedida(medida.id, 'altura', e.target.value)
+                                // Salvar altura para próximos forros se checkbox ativado
+                                if (alturaFixaAtivada && e.target.value.trim()) {
+                                  setUltimaAlturaUsada(e.target.value)
+                                }
+                              }}
                               onBlur={(e) => {
                                 const formatted = handleDimensionBlur('altura', e.target.value)
                                 atualizarMedida(medida.id, 'altura', formatted)
+                                // Salvar altura formatada para próximos forros se checkbox ativado
+                                if (formatted.trim()) {
+                                  setUltimaAlturaUsada(formatted)
+                                }
                               }}
                               onKeyDown={handleKeyDown}
                               className="input-field text-sm"
@@ -652,7 +685,7 @@ export default function ForroDrywallPage() {
                           <div className="text-gray-600">Desenho técnico será gerado após o cálculo</div>
                           <div className="text-sm text-gray-500">Inclui estrutura de perfis, fixações e pontos de iluminação</div>
                           <div className="text-xs text-gray-500 mt-2">
-                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} ambiente{medidas.length !== 1 ? 's' : ''})
+                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} medida{medidas.length !== 1 ? 's' : ''})
                           </div>
                         </div>
                       </div>
@@ -795,16 +828,6 @@ export default function ForroDrywallPage() {
         </div>
       </div>
 
-      {/* Botão Flutuante para Adicionar Medida */}
-      {activeTab === 'medidas' && (
-        <button
-          onClick={adicionarMedida}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-          title="Adicionar nova medida"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      )}
 
       {/* Modal para Especificações */}
       {modalAberto.tipo === 'especificacoes' && modalAberto.medidaId && (() => {

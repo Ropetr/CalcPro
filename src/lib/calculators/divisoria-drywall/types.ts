@@ -5,6 +5,7 @@ export interface MedidaParede {
   nome: string
   altura: number
   largura: number
+  quantidade: number  // ✨ Nova propriedade para multiplicação
   descricao: string
   area: number
   especificacoes: {
