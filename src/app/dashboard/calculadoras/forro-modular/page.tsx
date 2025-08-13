@@ -96,8 +96,9 @@ interface CalculationResult {
 interface Ambiente {
   id: string
   nome: string
-  comprimento: string
+  comprimento: string  // Altura para forro (seguindo padrão)
   largura: string
+  quantidade: number  // ✨ Nova propriedade para multiplicação
   descricao: string
   area: number
   especificacoes: {
@@ -139,12 +140,17 @@ export default function ForroModularPage() {
     return formatted
   }
   
+  // Estados para auto-preenchimento opcional (ativado pelo usuário)
+  const [alturaFixaAtivada, setAlturaFixaAtivada] = useState<boolean>(false)
+  const [ultimaAlturaUsada, setUltimaAlturaUsada] = useState<string>('')
+  
   const [ambientes, setAmbientes] = useState<Ambiente[]>([
     {
       id: '1',
       nome: '',
       comprimento: '',
       largura: '',
+      quantidade: 1,  // ✨ Padrão: 1 ambiente
       descricao: '',
       area: 0,
       especificacoes: {
@@ -180,18 +186,15 @@ export default function ForroModularPage() {
         adicionarAmbiente()
         // Focar no primeiro campo (largura) do novo ambiente após um pequeno delay
         setTimeout(() => {
-          const novoInput = document.querySelector('[data-ambiente-id]:last-child input[type="number"]') as HTMLInputElement
+          const novoInput = document.querySelector('[data-ambiente-id]:last-child input[data-nav-index="0"]') as HTMLInputElement
           if (novoInput) {
             novoInput.focus()
           }
         }, 100)
       }
       
-      // Se pressionou ENTER em qualquer campo de ambiente
-      if ((target?.getAttribute('data-field') === 'largura' || 
-           target?.getAttribute('data-field') === 'comprimento' || 
-           target?.getAttribute('data-field') === 'descricao') && 
-           event.key === 'Enter') {
+      // Se está no campo descrição e pressionou ENTER
+      if (target?.getAttribute('data-field') === 'descricao' && event.key === 'Enter') {
         event.preventDefault()
         calcularForroModular()
       }
@@ -608,24 +611,39 @@ export default function ForroModularPage() {
 
     // 1. CÁLCULO OTIMIZADO DAS PLACAS (usando sistema modular com aproveitamento do canto)
     const tipoPlaca = ambienteReferencia.especificacoes.tipoPlaca === '0625x0625' ? 'pequena' : 'grande';
+    // ✨ Expandir ambientes com quantidade > 1 em múltiplos ambientes individuais
     const totalPlacas = ambientes.reduce((total, amb) => {
       const largura = parseFloat(amb.largura.replace(',', '.'));
       const comprimento = parseFloat(amb.comprimento.replace(',', '.'));
       
       const resultadoPlacas = calcularPlacas(largura, comprimento, tipoPlaca);
-      return total + resultadoPlacas.totalPlacas;
+      return total + (resultadoPlacas.totalPlacas * amb.quantidade); // ✨ Multiplicar pela quantidade
     }, 0);
 
-    // Usar médias para os demais cálculos (simplificado)
-    const larguraMedia = ambientes.reduce((total, amb) => total + parseFloat(amb.largura.replace(',', '.')), 0) / ambientes.length;
-    const comprimentoMedio = ambientes.reduce((total, amb) => total + parseFloat(amb.comprimento.replace(',', '.')), 0) / ambientes.length;
+    // Usar médias para os demais cálculos (considerando quantidade)
+    const totalAmbientesExpandidos = ambientes.reduce((total, amb) => total + amb.quantidade, 0);
+    const larguraMedia = ambientes.reduce((total, amb) => {
+      return total + (parseFloat(amb.largura.replace(',', '.')) * amb.quantidade);
+    }, 0) / totalAmbientesExpandidos;
+    const comprimentoMedio = ambientes.reduce((total, amb) => {
+      return total + (parseFloat(amb.comprimento.replace(',', '.')) * amb.quantidade);
+    }, 0) / totalAmbientesExpandidos;
 
     // 2. OTIMIZAÇÃO GLOBAL DE PERFIS T - usando novo sistema modular
-    const ambientesParaPerfis = ambientes.map(amb => ({
-      largura: parseFloat(amb.largura.replace(',', '.')),
-      comprimento: parseFloat(amb.comprimento.replace(',', '.')),
-      nome: amb.nome
-    }));
+    // ✨ Expandir ambientes com quantidade > 1 em múltiplos ambientes individuais
+    const ambientesParaPerfis = ambientes.flatMap(amb => {
+      const ambienteBase = {
+        largura: parseFloat(amb.largura.replace(',', '.')),
+        comprimento: parseFloat(amb.comprimento.replace(',', '.')),
+        nome: amb.nome
+      };
+      
+      // ✨ Gerar array com N ambientes iguais baseado na quantidade
+      return Array(amb.quantidade).fill(null).map((_, index) => ({
+        ...ambienteBase,
+        nome: amb.quantidade > 1 ? `${amb.nome} (${index + 1}/${amb.quantidade})` : amb.nome
+      }));
+    });
     
     const perfisOtimizados = calcularPerfisMultiplosAmbientes(ambientesParaPerfis, placaDimensions);
     const totalPerfilT312 = perfisOtimizados.resumo.totalBarras312;
@@ -640,12 +658,13 @@ export default function ForroModularPage() {
 
     // 6. PENDURAIS E METALON
     const penduraisPorFileira = Math.floor(larguraMedia / 1.20);
-    // Calcular fileiras médias de perfis T para pendurais
+    // Calcular fileiras médias de perfis T para pendurais (considerando quantidade)
     const fileirasMedias = ambientes.reduce((total, amb) => {
       const comp = parseFloat(amb.comprimento.replace(',', '.')) || 0;
-      return total + Math.max(0, Math.ceil(comp / 1.25) - 1);
-    }, 0) / ambientes.length;
-    const totalPendurais = penduraisPorFileira * Math.ceil(fileirasMedias) * ambientes.length;
+      const fileiras = Math.max(0, Math.ceil(comp / 1.25) - 1);
+      return total + (fileiras * amb.quantidade); // ✨ Multiplicar pela quantidade
+    }, 0) / totalAmbientesExpandidos;
+    const totalPendurais = penduraisPorFileira * Math.ceil(fileirasMedias) * totalAmbientesExpandidos;
     const metragemMetalon = totalPendurais * alturaPendural;
     const barrasMetalon = Math.ceil(metragemMetalon / 6.00);
 
@@ -653,7 +672,8 @@ export default function ForroModularPage() {
     const perimetroTotal = ambientes.reduce((total, amb) => {
       const largura = parseFloat(amb.largura.replace(',', '.'));
       const comprimento = parseFloat(amb.comprimento.replace(',', '.'));
-      return total + ((largura + comprimento) * 2);
+      const perimetro = (largura + comprimento) * 2;
+      return total + (perimetro * amb.quantidade); // ✨ Multiplicar pela quantidade
     }, 0);
     const chipboardBuchas = Math.ceil(perimetroTotal / 0.50);
     
@@ -678,7 +698,8 @@ export default function ForroModularPage() {
       const fileiras = Math.ceil(qtdComprimento);
       const encontrosVerticais = (colunas - 1) * fileiras;
       const encontrosHorizontais = (fileiras - 1) * colunas;
-      return total + encontrosVerticais + encontrosHorizontais;
+      const travasPorAmbiente = encontrosVerticais + encontrosHorizontais;
+      return total + (travasPorAmbiente * amb.quantidade); // ✨ Multiplicar pela quantidade
     }, 0);
 
     const resultado: CalculationResult = {
@@ -730,8 +751,9 @@ export default function ForroModularPage() {
     const novoItem: Ambiente = {
       id: novoId,
       nome: '',
-      comprimento: '',
-      largura: '',
+      comprimento: alturaFixaAtivada ? ultimaAlturaUsada : '', // ✨ Altura fixa se ativada
+      largura: '', // Largura sempre vazia para novo ambiente
+      quantidade: 1, // ✨ Padrão: 1 ambiente
       descricao: '',
       area: 0,
       especificacoes: especificacoesPadrao ? {
@@ -778,13 +800,14 @@ export default function ForroModularPage() {
         } else {
           const updated = { ...ambiente, [campo]: valor }
           
-          // Calcular área automaticamente
-          if (campo === 'comprimento' || campo === 'largura') {
+          // Calcular área automaticamente (incluindo quantidade)
+          if (campo === 'comprimento' || campo === 'largura' || campo === 'quantidade') {
             const comprimentoStr = campo === 'comprimento' ? valor : updated.comprimento
             const larguraStr = campo === 'largura' ? valor : updated.largura
+            const quantidade = campo === 'quantidade' ? valor : updated.quantidade
             const comprimento = parseFloat(comprimentoStr.replace(',', '.')) || 0
             const largura = parseFloat(larguraStr.replace(',', '.')) || 0
-            updated.area = comprimento * largura
+            updated.area = comprimento * largura * quantidade
           }
           return updated
         }
@@ -1050,7 +1073,7 @@ export default function ForroModularPage() {
                           : 'border-transparent text-gray-500 hover:text-gray-700'
                       }`}
                     >
-                      Ambientes ({ambientes.length})
+                      Medidas ({ambientes.length})
                     </button>
                     <button
                       onClick={() => setActiveTab('desenho')}
@@ -1079,7 +1102,7 @@ export default function ForroModularPage() {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                         <input
                           type="text"
-                          placeholder="Buscar ambientes..."
+                          placeholder="Buscar medidas..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-48"
@@ -1180,16 +1203,12 @@ export default function ForroModularPage() {
                           <div key={ambiente.id} className="border border-gray-200 rounded-lg p-4" data-ambiente-id={ambiente.id}>
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-purple-600">{displayNumber}</span>
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-green-600">{displayNumber}</span>
                                 </div>
-                                <input
-                                  type="text"
-                                  value={ambiente.nome}
-                                  onChange={(e) => atualizarAmbiente(ambiente.id, 'nome', e.target.value)}
-                                  className="text-sm font-medium bg-transparent border-none focus:ring-0 p-0"
-                                  placeholder="Nome do ambiente"
-                                />
+                                <div className="text-sm text-gray-600">
+                                  {ambiente.area.toFixed(2)} m² {ambiente.quantidade > 1 ? `(${ambiente.quantidade}× ambientes)` : ''}
+                                </div>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <div className="flex items-center space-x-1 mr-3">
@@ -1226,9 +1245,6 @@ export default function ForroModularPage() {
                                     <Flag className="h-3 w-3" />
                                   </button>
                                 </div>
-                                <div className="text-sm text-gray-600">
-                                  {ambiente.area.toFixed(2)} m²
-                                </div>
                                 {ambientes.length > 1 && (
                                   <button
                                     onClick={() => removerAmbiente(ambiente.id)}
@@ -1242,31 +1258,76 @@ export default function ForroModularPage() {
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
-                                <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="block text-xs text-gray-600">Largura (m)</label>
+                                  <div className="flex items-center space-x-1">
+                                    <span className="text-xs text-gray-500">×</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="99"
+                                      value={ambiente.quantidade === 1 ? '' : ambiente.quantidade}
+                                      onChange={(e) => atualizarAmbiente(ambiente.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                      className="w-14 h-5 text-xs border border-gray-300 rounded pl-1 pr-1 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                      placeholder=""
+                                      title="Quantidade de ambientes iguais (deixe vazio para 1 ambiente)"
+                                      tabIndex={-1}
+                                    />
+                                  </div>
+                                </div>
                                 <input
                                   type="text"
                                   inputMode="decimal"
                                   value={ambiente.largura}
                                   onChange={(e) => atualizarAmbiente(ambiente.id, 'largura', e.target.value)}
-                                  onBlur={(e) => atualizarAmbiente(ambiente.id, 'largura', formatarNumero(e.target.value))}
+                                  onBlur={(e) => {
+                                    const formatted = handleDimensionBlur('largura', e.target.value)
+                                    atualizarAmbiente(ambiente.id, 'largura', formatted)
+                                  }}
                                   onKeyDown={handleKeyDown}
                                   className="input-field text-sm"
                                   placeholder="3,50"
-                                  data-field="largura"
+                                  data-nav-index={0}
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="block text-xs text-gray-600">Altura (m)</label>
+                                  <div className="flex items-center space-x-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={alturaFixaAtivada}
+                                      onChange={(e) => setAlturaFixaAtivada(e.target.checked)}
+                                      className="w-3 h-3 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
+                                      title="Usar última altura inserida nos próximos ambientes"
+                                      tabIndex={-1}
+                                    />
+                                    <span className="text-xs text-gray-500" title="Usar última altura inserida nos próximos ambientes">fixar</span>
+                                  </div>
+                                </div>
                                 <input
                                   type="text"
                                   inputMode="decimal"
                                   value={ambiente.comprimento}
-                                  onChange={(e) => atualizarAmbiente(ambiente.id, 'comprimento', e.target.value)}
-                                  onBlur={(e) => atualizarAmbiente(ambiente.id, 'comprimento', formatarNumero(e.target.value))}
+                                  onChange={(e) => {
+                                    atualizarAmbiente(ambiente.id, 'comprimento', e.target.value)
+                                    // Salvar altura para próximos ambientes se checkbox ativado
+                                    if (alturaFixaAtivada && e.target.value.trim()) {
+                                      setUltimaAlturaUsada(e.target.value)
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const formatted = handleDimensionBlur('comprimento', e.target.value)
+                                    atualizarAmbiente(ambiente.id, 'comprimento', formatted)
+                                    // Salvar altura formatada para próximos ambientes se checkbox ativado
+                                    if (formatted.trim()) {
+                                      setUltimaAlturaUsada(formatted)
+                                    }
+                                  }}
                                   onKeyDown={handleKeyDown}
                                   className="input-field text-sm"
-                                  placeholder="4,50"
-                                  data-field="comprimento"
+                                  placeholder="2,70"
+                                  data-nav-index={1}
                                 />
                               </div>
                               <div>
@@ -1275,7 +1336,6 @@ export default function ForroModularPage() {
                                   type="text"
                                   value={ambiente.descricao}
                                   onChange={(e) => atualizarAmbiente(ambiente.id, 'descricao', e.target.value)}
-                                  onBlur={(e) => atualizarAmbiente(ambiente.id, 'descricao', e.target.value)}
                                   className="input-field text-sm"
                                   placeholder="Ex: Sala, Escritório..."
                                   data-field="descricao"
