@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react'
 import { 
   ArrowLeft, 
-  Settings, 
   Calculator, 
   FileText, 
   Download,
+  Settings,
+  Ruler,
+  Layers,
   Package,
   AlertCircle,
   Plus,
@@ -26,6 +28,7 @@ interface Medida {
   nome: string
   altura: string
   largura: string
+  quantidade: number  // ✨ Nova propriedade para multiplicação
   descricao: string
   area: number
   especificacoes: {
@@ -81,8 +84,8 @@ export default function PisoWallPage() {
     const formatted = autoCompleteDimension(value)
     return formatted
   }
-
-  // Estado para lembrar última altura usada (auto-preenchimento)
+  // Estados para auto-preenchimento opcional (ativado pelo usuário)
+  const [alturaFixaAtivada, setAlturaFixaAtivada] = useState<boolean>(false)
   const [ultimaAlturaUsada, setUltimaAlturaUsada] = useState<string>('')
 
   const [medidas, setMedidas] = useState<Medida[]>([
@@ -91,6 +94,7 @@ export default function PisoWallPage() {
       nome: '',
       altura: '',
       largura: '',
+      quantidade: 1,  // ✨ Padrão: 1 ambiente
       descricao: '',
       area: 0,
       especificacoes: {
@@ -159,11 +163,32 @@ export default function PisoWallPage() {
 
   const calcularMateriais = () => {
     try {
-      // Simular cálculo de materiais para piso wall
-      const medidasValidas = medidas.filter(medida => 
-        parseFloat(medida.altura.replace(',', '.')) > 0 && 
-        parseFloat(medida.largura.replace(',', '.')) > 0
-      )
+      // Converter medidas para o formato esperado pela calculadora
+      // ✨ Expandir ambientes com quantidade > 1 em múltiplos ambientes individuais
+      const ambientesParaCalculo = medidas
+        .filter(medida => parseFloat(medida.altura.replace(',', '.')) > 0 && parseFloat(medida.largura.replace(',', '.')) > 0)
+        .flatMap(medida => {
+          const ambienteBase = {
+            id: medida.id,
+            nome: medida.nome,
+            altura: parseFloat(medida.altura.replace(',', '.')),
+            largura: parseFloat(medida.largura.replace(',', '.')),
+            quantidade: 1,  // ✨ Cada ambiente individual tem quantidade = 1
+            descricao: medida.descricao,
+            area: parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.')),  // ✨ Área individual
+            especificacoes: medida.especificacoes,
+            vaos: medida.vaos
+          }
+          
+          // ✨ Gerar array com N ambientes iguais baseado na quantidade
+          return Array(medida.quantidade).fill(null).map((_, index) => ({
+            ...ambienteBase,
+            id: `${medida.id}-${index + 1}`,  // IDs únicos: "1-1", "1-2", "1-3", "1-4"
+            nome: medida.quantidade > 1 ? `${medida.nome} (${index + 1}/${medida.quantidade})` : medida.nome
+          }))
+        })
+        
+      const medidasValidas = ambientesParaCalculo
       
       if (medidasValidas.length === 0) {
         alert('Adicione pelo menos uma medida válida para calcular')
@@ -172,16 +197,16 @@ export default function PisoWallPage() {
       
       // Resultado fictício para demonstrar a estrutura
       const resultado = {
-        areaTotal: medidasValidas.reduce((total, medida) => 
-          total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))), 0
+        areaTotal: medidasValidas.reduce((total, ambiente) => 
+          total + ambiente.area, 0
         ),
         resumo: {
-          totalChapas: Math.ceil(medidasValidas.reduce((total, medida) => 
-            total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))), 0
+          totalChapas: Math.ceil(medidasValidas.reduce((total, ambiente) => 
+            total + ambiente.area, 0
           ) / 2.88), // 1.20 x 2.40 = 2.88m²
           totalParafusos: Math.ceil(medidasValidas.length * 50),
-          totalAcessorios: medidasValidas.reduce((total, medida) => 
-            total + parseInt(medida.vaos.registros.quantidade) + parseInt(medida.vaos.soleiras.quantidade) + parseInt(medida.vaos.transicoes.quantidade), 0
+          totalAcessorios: medidasValidas.reduce((total, ambiente) => 
+            total + parseInt(ambiente.vaos.registros.quantidade) + parseInt(ambiente.vaos.soleiras.quantidade) + parseInt(ambiente.vaos.transicoes.quantidade), 0
           )
         },
         materiais: {
@@ -189,8 +214,8 @@ export default function PisoWallPage() {
             {
               item: "Chapa Wall 10mm",
               descricao: "Chapa de madeira reconstituída tradicional",
-              quantidade: Math.ceil(medidasValidas.reduce((total, medida) => 
-                total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))), 0
+              quantidade: Math.ceil(medidasValidas.reduce((total, ambiente) => 
+                total + ambiente.area, 0
               ) / 2.88 * 1.1),
               unidade: "un",
               observacoes: "Inclui 10% de perda - Dimensão: 1,20 x 2,40m"
@@ -209,8 +234,8 @@ export default function PisoWallPage() {
             {
               item: "Fita de Junção",
               descricao: "Fita para acabamento das juntas",
-              quantidade: Math.ceil(medidasValidas.reduce((total, medida) => 
-                total + ((parseFloat(medida.altura.replace(',', '.')) + parseFloat(medida.largura.replace(',', '.'))) * 2), 0
+              quantidade: Math.ceil(medidasValidas.reduce((total, ambiente) => 
+                total + ((ambiente.altura + ambiente.largura) * 2), 0
               )),
               unidade: "m",
               observacoes: "Para acabamento das bordas"
@@ -234,8 +259,9 @@ export default function PisoWallPage() {
     const novoItem: Medida = {
       id: novaId,
       nome: '',
-      altura: ultimaAlturaUsada, // ✨ Auto-preenchimento da altura
-      largura: '',
+      altura: alturaFixaAtivada ? ultimaAlturaUsada : '', // ✨ Altura fixa se ativada
+      largura: '', // Largura sempre vazia para novo ambiente
+      quantidade: 1, // ✨ Padrão: 1 ambiente
       descricao: '',
       area: 0,
       especificacoes: especificacoesPadrao ? {
@@ -281,11 +307,6 @@ export default function PisoWallPage() {
   }
 
   const atualizarMedida = (id: string, campo: keyof Medida, valor: any) => {
-    // ✨ Salvar altura para auto-preenchimento dos próximos pisos
-    if (campo === 'altura' && typeof valor === 'string' && valor.trim()) {
-      setUltimaAlturaUsada(valor)
-    }
-    
     setMedidas(medidas.map(medida => {
       if (medida.id === id) {
         if (campo === 'especificacoes') {
@@ -301,11 +322,12 @@ export default function PisoWallPage() {
         } else {
           const updated = { ...medida, [campo]: valor }
           
-          // Calcular área automaticamente
-          if (campo === 'altura' || campo === 'largura') {
+          // Calcular área automaticamente (incluindo quantidade)
+          if (campo === 'altura' || campo === 'largura' || campo === 'quantidade') {
             const altura = parseFloat((campo === 'altura' ? valor : updated.altura).replace(',', '.')) || 0
             const largura = parseFloat((campo === 'largura' ? valor : updated.largura).replace(',', '.')) || 0
-            updated.area = altura * largura
+            const quantidade = campo === 'quantidade' ? valor : updated.quantidade
+            updated.area = altura * largura * quantidade
           }
           return updated
         }
@@ -315,6 +337,7 @@ export default function PisoWallPage() {
   }
 
   const areaTotal = medidas.reduce((total, medida) => total + medida.area, 0)
+  const totalAmbientes = medidas.reduce((total, medida) => total + medida.quantidade, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (medida: Medida) => {
@@ -371,12 +394,12 @@ export default function PisoWallPage() {
                 Voltar
               </Link>
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-                  <Settings className="h-6 w-6 text-gray-600" />
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                  <Layers className="h-6 w-6 text-orange-600" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Piso Wall</h1>
-                  <p className="text-sm text-gray-600">Chapas de madeira reconstituída com espessuras variadas</p>
+                  <p className="text-sm text-gray-600">Chapas de madeira reconstituída para revestimento</p>
                 </div>
               </div>
             </div>
@@ -405,23 +428,23 @@ export default function PisoWallPage() {
             {/* Cards de Informação */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow p-6 text-center">
-                <Settings className="h-8 w-8 text-gray-600 mx-auto mb-3" />
+                <Ruler className="h-8 w-8 text-orange-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Área Total</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {areaTotal.toFixed(2)} m²
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {medidas.length} ambiente{medidas.length !== 1 ? 's' : ''}
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow p-6 text-center">
-                <Package className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                <Layers className="h-8 w-8 text-green-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Ambientes</div>
-                <div className="text-2xl font-bold text-gray-900">{medidas.length}</div>
+                <div className="text-2xl font-bold text-gray-900">{totalAmbientes}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> novo ambiente
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                   <br />
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova • <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
                 </div>
               </div>
             </div>
@@ -462,7 +485,7 @@ export default function PisoWallPage() {
                       Lista de Materiais
                     </button>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 pb-4">
                     {activeTab === 'medidas' && (
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -500,7 +523,7 @@ export default function PisoWallPage() {
                   <div className="space-y-4">
                     {medidas.length === 0 && (
                       <div className="text-center py-8">
-                        <Settings className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                        <Ruler className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                         <div className="text-gray-600">Nenhuma medida adicionada</div>
                         <button
                           onClick={adicionarMedida}
@@ -579,7 +602,23 @@ export default function PisoWallPage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Comprimento (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs text-gray-500">×</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="99"
+                                  value={medida.quantidade === 1 ? '' : medida.quantidade}
+                                  onChange={(e) => atualizarMedida(medida.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                  className="w-14 h-5 text-xs border border-gray-300 rounded pl-1 pr-1 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder=""
+                                  title="Quantidade de ambientes iguais (deixe vazio para 1 ambiente)"
+                                  tabIndex={-1}
+                                />
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.largura}
@@ -595,18 +634,41 @@ export default function PisoWallPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Altura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Largura (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="checkbox"
+                                  checked={alturaFixaAtivada}
+                                  onChange={(e) => setAlturaFixaAtivada(e.target.checked)}
+                                  className="w-3 h-3 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
+                                  title="Usar última largura inserida nos próximos ambientes"
+                                  tabIndex={-1}
+                                />
+                                <span className="text-xs text-gray-500" title="Usar última largura inserida nos próximos ambientes">fixar</span>
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.altura}
-                              onChange={(e) => atualizarMedida(medida.id, 'altura', e.target.value)}
+                              onChange={(e) => {
+                                atualizarMedida(medida.id, 'altura', e.target.value)
+                                // Salvar largura para próximos ambientes se checkbox ativado
+                                if (alturaFixaAtivada && e.target.value.trim()) {
+                                  setUltimaAlturaUsada(e.target.value)
+                                }
+                              }}
                               onBlur={(e) => {
                                 const formatted = handleDimensionBlur('altura', e.target.value)
                                 atualizarMedida(medida.id, 'altura', formatted)
+                                // Salvar largura formatada para próximos ambientes se checkbox ativado
+                                if (formatted.trim()) {
+                                  setUltimaAlturaUsada(formatted)
+                                }
                               }}
                               onKeyDown={handleKeyDown}
                               className="input-field text-sm"
-                              placeholder="2,70"
+                              placeholder="3,20"
                               data-nav-index={1}
                             />
                           </div>
@@ -635,11 +697,11 @@ export default function PisoWallPage() {
                     {!resultadoCalculo ? (
                       <div className="h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
                         <div className="text-center">
-                          <Settings className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                          <Layers className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                           <div className="text-gray-600">Desenho técnico será gerado após o cálculo</div>
-                          <div className="text-sm text-gray-500">Inclui plano de corte e aproveitamento das chapas</div>
+                          <div className="text-sm text-gray-500">Inclui plano de corte e manual de instalação</div>
                           <div className="text-xs text-gray-500 mt-2">
-                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} ambiente{medidas.length !== 1 ? 's' : ''})
+                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} medida{medidas.length !== 1 ? 's' : ''})
                           </div>
                         </div>
                       </div>
@@ -647,7 +709,7 @@ export default function PisoWallPage() {
                       <div className="space-y-4">
                         <div className="h-64 bg-gray-50 border border-gray-300 rounded-lg flex items-center justify-center">
                           <div className="text-center">
-                            <Settings className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+                            <Layers className="h-12 w-12 text-gray-600 mx-auto mb-3" />
                             <div className="text-gray-600">Plano de corte das chapas Wall</div>
                             <div className="text-sm text-gray-500">Aproveitamento otimizado das chapas 1,20 x 2,40m</div>
                           </div>
@@ -668,22 +730,26 @@ export default function PisoWallPage() {
                     ) : (
                       <div className="space-y-6">
                         {/* Resumo do Cálculo */}
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-gray-900">Resumo do Cálculo</h3>
+                            <h3 className="font-semibold text-orange-900">Resumo do Cálculo</h3>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div className="text-center">
-                              <div className="text-lg font-bold text-gray-900">{resultadoCalculo.areaTotal.toFixed(2)}</div>
-                              <div className="text-gray-700">m² líquidos</div>
+                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.areaTotal.toFixed(2)}</div>
+                              <div className="text-orange-700">m² líquidos</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-gray-900">{resultadoCalculo.resumo.totalChapas}</div>
-                              <div className="text-gray-700">chapas</div>
+                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.resumo.totalChapas}</div>
+                              <div className="text-orange-700">chapas</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-gray-900">{resultadoCalculo.resumo.totalParafusos}</div>
-                              <div className="text-gray-700">parafusos</div>
+                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.resumo.totalParafusos}</div>
+                              <div className="text-orange-700">parafusos</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.resumo.totalAcessorios || 0}</div>
+                              <div className="text-orange-700">acessórios</div>
                             </div>
                           </div>
                         </div>
@@ -692,7 +758,7 @@ export default function PisoWallPage() {
                         <div className="bg-white border border-gray-200 rounded-lg">
                           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
                             <h3 className="font-semibold text-gray-900 flex items-center">
-                              <Package className="h-5 w-5 mr-2 text-gray-600" />
+                              <Layers className="h-5 w-5 mr-2 text-gray-600" />
                               Chapas Wall
                             </h3>
                           </div>
@@ -720,7 +786,7 @@ export default function PisoWallPage() {
                         <div className="bg-white border border-gray-200 rounded-lg">
                           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
                             <h3 className="font-semibold text-gray-900 flex items-center">
-                              <Settings className="h-5 w-5 mr-2 text-gray-600" />
+                              <Package className="h-5 w-5 mr-2 text-gray-600" />
                               Fixação e Parafusos
                             </h3>
                           </div>
@@ -748,7 +814,7 @@ export default function PisoWallPage() {
                         <div className="bg-white border border-gray-200 rounded-lg">
                           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
                             <h3 className="font-semibold text-gray-900 flex items-center">
-                              <Settings className="h-5 w-5 mr-2 text-gray-600" />
+                              <Ruler className="h-5 w-5 mr-2 text-gray-600" />
                               Acessórios e Acabamento
                             </h3>
                           </div>
@@ -782,16 +848,6 @@ export default function PisoWallPage() {
         </div>
       </div>
 
-      {/* Botão Flutuante para Adicionar Medida */}
-      {activeTab === 'medidas' && (
-        <button
-          onClick={adicionarMedida}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-gray-600 hover:bg-gray-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-          title="Adicionar novo ambiente"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      )}
 
       {/* Modal para Especificações */}
       {modalAberto.tipo === 'especificacoes' && modalAberto.medidaId && (() => {
@@ -925,7 +981,7 @@ export default function PisoWallPage() {
                     
                     setModalAberto({tipo: null, medidaId: null})
                   }}
-                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                  className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                 >
                   Salvar
                 </button>
@@ -1131,7 +1187,7 @@ export default function PisoWallPage() {
                     atualizarMedida(medida.id, 'vaos', { preenchido: true })
                     setModalAberto({tipo: null, medidaId: null})
                   }}
-                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                  className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                 >
                   Salvar
                 </button>
