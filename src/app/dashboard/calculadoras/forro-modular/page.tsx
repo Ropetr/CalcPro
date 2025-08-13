@@ -142,7 +142,7 @@ export default function ForroModularPage() {
   const [ambientes, setAmbientes] = useState<Ambiente[]>([
     {
       id: '1',
-      nome: 'Ambiente 01',
+      nome: '',
       comprimento: '',
       largura: '',
       descricao: '',
@@ -729,7 +729,7 @@ export default function ForroModularPage() {
     const novoId = (ambientes.length + 1).toString()
     const novoItem: Ambiente = {
       id: novoId,
-      nome: `Ambiente ${novoId.padStart(2, '0')}`,
+      nome: '',
       comprimento: '',
       largura: '',
       descricao: '',

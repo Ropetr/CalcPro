@@ -84,7 +84,7 @@ export default function PisoWallPage() {
   const [medidas, setMedidas] = useState<Medida[]>([
     {
       id: '1',
-      nome: 'Ambiente 01',
+      nome: '',
       altura: '',
       largura: '',
       descricao: '',
@@ -229,7 +229,7 @@ export default function PisoWallPage() {
     const novaId = (medidas.length + 1).toString()
     const novoItem: Medida = {
       id: novaId,
-      nome: `Ambiente ${novaId.padStart(2, '0')}`,
+      nome: '',
       altura: '',
       largura: '',
       descricao: '',
@@ -504,7 +504,7 @@ export default function PisoWallPage() {
                     
                     <div className="max-h-96 overflow-y-auto space-y-4">
                       {medidas.slice().reverse().map((medida, reverseIndex) => {
-                        const displayNumber = reverseIndex + 1;
+                        const displayNumber = medidas.length - reverseIndex;
                         return (
                           <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-medida-id={medida.id}>
                             <div className="flex items-center justify-between mb-3">
