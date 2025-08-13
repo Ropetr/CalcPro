@@ -84,6 +84,9 @@ export default function DivisoriaDrywallPage() {
     const formatted = autoCompleteDimension(value)
     return formatted
   }
+  // Estado para lembrar última altura usada (auto-preenchimento)
+  const [ultimaAlturaUsada, setUltimaAlturaUsada] = useState<string>('')
+
   const [medidas, setMedidas] = useState<Medida[]>([
     {
       id: '1',
@@ -211,7 +214,7 @@ export default function DivisoriaDrywallPage() {
     const novoItem: Medida = {
       id: novaId,
       nome: '',
-      altura: '',
+      altura: ultimaAlturaUsada, // ✨ Auto-preenchimento da altura
       largura: '',
       descricao: '',
       area: 0,
@@ -255,6 +258,11 @@ export default function DivisoriaDrywallPage() {
   }
 
   const atualizarMedida = (id: string, campo: keyof Medida, valor: any) => {
+    // ✨ Salvar altura para auto-preenchimento das próximas paredes
+    if (campo === 'altura' && typeof valor === 'string' && valor.trim()) {
+      setUltimaAlturaUsada(valor)
+    }
+    
     setMedidas(medidas.map(medida => {
       if (medida.id === id) {
         if (campo === 'especificacoes') {

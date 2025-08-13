@@ -26,9 +26,9 @@ import { autoCompleteDimension } from '@/lib/ui-standards/formatting/formatters'
 
 interface Medida {
   id: string
-  nome: string
   altura: string
   largura: string
+  quantidade: number  // ✨ Nova propriedade para multiplicação
   descricao: string
   area: number
   especificacoes: {
@@ -79,12 +79,16 @@ export default function DivisoriaNavalPage() {
     const formatted = autoCompleteDimension(value)
     return formatted
   }
+  // Estados para auto-preenchimento opcional (ativado pelo usuário)
+  const [alturaFixaAtivada, setAlturaFixaAtivada] = useState<boolean>(false)
+  const [ultimaAlturaUsada, setUltimaAlturaUsada] = useState<string>('')
+
   const [medidas, setMedidas] = useState<Medida[]>([
     {
       id: '1',
-      nome: '',
       altura: '',
       largura: '',
+      quantidade: 1,  // ✨ Padrão: 1 parede
       descricao: '',
       area: 0,
       especificacoes: {
@@ -129,7 +133,7 @@ export default function DivisoriaNavalPage() {
         adicionarMedida()
         // Focar no primeiro campo (largura) da nova medida após um pequeno delay
         setTimeout(() => {
-          const novoInput = document.querySelector('[data-medida-id]:last-child input[type="text"]') as HTMLInputElement
+          const novoInput = document.querySelector('[data-medida-id]:last-child input[data-nav-index="0"]') as HTMLInputElement
           if (novoInput) {
             novoInput.focus()
           }
@@ -226,9 +230,9 @@ export default function DivisoriaNavalPage() {
     const novaId = (medidas.length + 1).toString()
     const novoItem: Medida = {
       id: novaId,
-      nome: '',
-      altura: '',
-      largura: '',
+      altura: alturaFixaAtivada ? ultimaAlturaUsada : '', // ✨ Altura fixa se ativada
+      largura: '', // Largura sempre vazia para nova parede
+      quantidade: 1, // ✨ Padrão: 1 parede
       descricao: '',
       area: 0,
       especificacoes: especificacoesPadrao ? {
@@ -269,6 +273,7 @@ export default function DivisoriaNavalPage() {
   }
 
   const atualizarMedida = (id: string, campo: keyof Medida, valor: any) => {
+
     setMedidas(medidas.map(medida => {
       if (medida.id === id) {
         if (campo === 'especificacoes') {
@@ -284,11 +289,12 @@ export default function DivisoriaNavalPage() {
         } else {
           const updated = { ...medida, [campo]: valor }
           
-          // Calcular área automaticamente
-          if (campo === 'altura' || campo === 'largura') {
+          // Calcular área automaticamente (incluindo quantidade)
+          if (campo === 'altura' || campo === 'largura' || campo === 'quantidade') {
             const altura = parseFloat((campo === 'altura' ? valor : updated.altura).replace(',', '.')) || 0
             const largura = parseFloat((campo === 'largura' ? valor : updated.largura).replace(',', '.')) || 0
-            updated.area = altura * largura
+            const quantidade = campo === 'quantidade' ? valor : updated.quantidade
+            updated.area = altura * largura * quantidade
           }
           return updated
         }
@@ -298,6 +304,7 @@ export default function DivisoriaNavalPage() {
   }
 
   const areaTotal = medidas.reduce((total, medida) => total + medida.area, 0)
+  const totalDivisorias = medidas.reduce((total, medida) => total + medida.quantidade, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (medida: Medida) => {
@@ -399,11 +406,11 @@ export default function DivisoriaNavalPage() {
               <div className="bg-white rounded-lg shadow p-6 text-center">
                 <Waves className="h-8 w-8 text-green-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Divisórias</div>
-                <div className="text-2xl font-bold text-gray-900">{medidas.length}</div>
+                <div className="text-2xl font-bold text-gray-900">{totalDivisorias}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova medida
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                   <br />
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova • <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
                 </div>
               </div>
             </div>
@@ -503,13 +510,9 @@ export default function DivisoriaNavalPage() {
                                 <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
                                   <span className="text-sm font-medium text-orange-600">{displayNumber}</span>
                                 </div>
-                            <input
-                              type="text"
-                              value={medida.nome}
-                              onChange={(e) => atualizarMedida(medida.id, 'nome', e.target.value)}
-                              className="text-sm font-medium bg-transparent border-none focus:ring-0 p-0"
-                              placeholder="Nome da divisória"
-                            />
+                                <div className="text-sm text-gray-600">
+                                  {medida.area.toFixed(2)} m² {medida.quantidade > 1 ? `(${medida.quantidade}× divisórias)` : ''}
+                                </div>
                           </div>
                           <div className="flex items-center space-x-2">
                             <div className="flex items-center space-x-1 mr-3">
@@ -545,9 +548,6 @@ export default function DivisoriaNavalPage() {
                                 <Flag className="h-3 w-3" />
                               </button>
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {medida.area.toFixed(2)} m²
-                            </div>
                             {medidas.length > 1 && (
                               <button
                                 onClick={() => removerMedida(medida.id)}
@@ -561,7 +561,23 @@ export default function DivisoriaNavalPage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Largura (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs text-gray-500">×</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="99"
+                                  value={medida.quantidade === 1 ? '' : medida.quantidade}
+                                  onChange={(e) => atualizarMedida(medida.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                  className="w-14 h-5 text-xs border border-gray-300 rounded pl-1 pr-1 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder=""
+                                  title="Quantidade de divisórias iguais (deixe vazio para 1 divisória)"
+                                  tabIndex={-1}
+                                />
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.largura}
@@ -577,14 +593,37 @@ export default function DivisoriaNavalPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Altura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Altura (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="checkbox"
+                                  checked={alturaFixaAtivada}
+                                  onChange={(e) => setAlturaFixaAtivada(e.target.checked)}
+                                  className="w-3 h-3 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
+                                  title="Usar última altura inserida nas próximas divisórias"
+                                  tabIndex={-1}
+                                />
+                                <span className="text-xs text-gray-500" title="Usar última altura inserida nas próximas divisórias">fixar</span>
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.altura}
-                              onChange={(e) => atualizarMedida(medida.id, 'altura', e.target.value)}
+                              onChange={(e) => {
+                                atualizarMedida(medida.id, 'altura', e.target.value)
+                                // Salvar altura para próximas divisórias se checkbox ativado
+                                if (alturaFixaAtivada && e.target.value.trim()) {
+                                  setUltimaAlturaUsada(e.target.value)
+                                }
+                              }}
                               onBlur={(e) => {
                                 const formatted = handleDimensionBlur('altura', e.target.value)
                                 atualizarMedida(medida.id, 'altura', formatted)
+                                // Salvar altura formatada para próximas divisórias se checkbox ativado
+                                if (formatted.trim()) {
+                                  setUltimaAlturaUsada(formatted)
+                                }
                               }}
                               onKeyDown={handleKeyDown}
                               className="input-field text-sm"
@@ -764,16 +803,6 @@ export default function DivisoriaNavalPage() {
         </div>
       </div>
 
-      {/* Botão Flutuante para Adicionar Medida */}
-      {activeTab === 'medidas' && (
-        <button
-          onClick={adicionarMedida}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-          title="Adicionar nova medida"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      )}
 
       {/* Modal para Especificações */}
       {modalAberto.tipo === 'especificacoes' && modalAberto.medidaId && (() => {
