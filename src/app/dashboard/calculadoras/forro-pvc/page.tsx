@@ -33,20 +33,14 @@ import type {
   ResultadoCalculoPVC 
 } from '@/lib/calculators/forro-pvc/types'
 
-interface Ambiente {
-  id: string
-  altura: string
-  largura: string
-  area: number
-}
-
 interface Medida {
   id: string
   nome: string
+  altura: string
+  largura: string
+  quantidade: number  // ✨ Nova propriedade para multiplicação
   descricao: string
-  tipo: 'retangular' | 'em_l'
-  ambientes: Ambiente[]
-  areaTotal: number
+  area: number
   especificacoes: {
     tipoPVC: 'branco' | 'texturizado' | 'madeirado'
     perfis: 'cantoneira' | 'perfil-h' | 'ambos'
@@ -103,22 +97,19 @@ export default function ForroPVCPage() {
     const formatted = autoCompleteDimension(value)
     return formatted
   }
+  // Estados para auto-preenchimento opcional (ativado pelo usuário)
+  const [alturaFixaAtivada, setAlturaFixaAtivada] = useState<boolean>(false)
+  const [ultimaAlturaUsada, setUltimaAlturaUsada] = useState<string>('')
 
   const [medidas, setMedidas] = useState<Medida[]>([
     {
       id: '1',
       nome: '',
+      altura: '',
+      largura: '',
+      quantidade: 1,  // ✨ Padrão: 1 ambiente
       descricao: '',
-      tipo: 'retangular',
-      ambientes: [
-        {
-          id: '1-1',
-          altura: '',
-          largura: '',
-          area: 0
-        }
-      ],
-      areaTotal: 0,
+      area: 0,
       especificacoes: {
         tipoPVC: 'branco' as const,
         perfis: 'cantoneira' as const,
@@ -150,43 +141,27 @@ export default function ForroPVCPage() {
   // Configurações gerais do projeto
   const [espessura, setEspessura] = useState('200')
 
-  // Atalhos de teclado: TAB (novo cômodo), SHIFT+TAB (novo ambiente), ENTER (calcular)
+  // Atalhos de teclado: TAB (nova medida) e ENTER (calcular)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLInputElement
       
-      // Se está no último campo de um ambiente e pressionou TAB
+      // Se está no campo descrição e pressionou TAB
       if (target?.getAttribute('data-field') === 'descricao' && event.key === 'Tab') {
         event.preventDefault()
-        // Salvar o valor atual antes de adicionar
-        const medidaId = target.closest('[data-comodo-id]')?.getAttribute('data-comodo-id')
+        // Salvar o valor atual antes de adicionar nova medida
+        const medidaId = target.closest('[data-medida-id]')?.getAttribute('data-medida-id')
         if (medidaId && target.value) {
           atualizarMedida(medidaId, 'descricao', target.value)
         }
-        
-        if (event.shiftKey) {
-          // SHIFT + TAB: adicionar novo ambiente no mesmo cômodo
-          if (medidaId) {
-            adicionarAmbiente(medidaId)
-            // Focar no primeiro campo do novo ambiente
-            setTimeout(() => {
-              const novoInput = document.querySelector(`[data-comodo-id="${medidaId}"] [data-ambiente-id]:last-child input[type="text"]:first-of-type`) as HTMLInputElement
-              if (novoInput) {
-                novoInput.focus()
-              }
-            }, 100)
+        adicionarMedida()
+        // Focar no primeiro campo (largura) da nova medida após um pequeno delay
+        setTimeout(() => {
+          const novoInput = document.querySelector('[data-medida-id]:last-child input[data-nav-index="0"]') as HTMLInputElement
+          if (novoInput) {
+            novoInput.focus()
           }
-        } else {
-          // TAB: adicionar novo cômodo
-          adicionarMedida()
-          // Focar no primeiro campo do novo cômodo
-          setTimeout(() => {
-            const novoInput = document.querySelector('[data-comodo-id]:last-child [data-ambiente-id] input[type="text"]:first-of-type') as HTMLInputElement
-            if (novoInput) {
-              novoInput.focus()
-            }
-          }, 100)
-        }
+        }, 100)
       }
       
       // Se está no campo descrição e pressionou ENTER
@@ -204,43 +179,34 @@ export default function ForroPVCPage() {
 
   const calcularMateriais = () => {
     try {
-      // Converter medidas para o formato da calculadora
-      const comodosParaCalcular: ComodoPVC[] = []
-      
-      for (const medida of medidas) {
-        // Verificar se tem ambientes válidos
-        const ambientesValidos = medida.ambientes.filter(ambiente => {
-          const altura = parseFloat(ambiente.altura.replace(',', '.'))
-          const largura = parseFloat(ambiente.largura.replace(',', '.'))
-          return altura > 0 && largura > 0
+      // Converter medidas para o formato esperado pela calculadora
+      // ✨ Expandir ambientes com quantidade > 1 em múltiplos ambientes individuais
+      const ambientesParaCalculo: ComodoPVC[] = medidas
+        .filter(medida => parseFloat(medida.altura.replace(',', '.')) > 0 && parseFloat(medida.largura.replace(',', '.')) > 0)
+        .flatMap(medida => {
+          const ambienteBase: ComodoPVC = {
+            id: medida.id,
+            nome: medida.nome,
+            ambientes: [{
+              id: medida.id,
+              largura: parseFloat(medida.largura.replace(',', '.')),
+              comprimento: parseFloat(medida.altura.replace(',', '.')),
+              descricao: medida.descricao
+            }],
+            area: parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.')),  // ✨ Área individual
+            tipoComodo: 'retangular'
+          }
+          
+          // ✨ Gerar array com N ambientes iguais baseado na quantidade
+          return Array(medida.quantidade).fill(null).map((_, index) => ({
+            ...ambienteBase,
+            id: `${medida.id}-${index + 1}`,  // IDs únicos: "1-1", "1-2", "1-3", "1-4"
+            nome: medida.quantidade > 1 ? `${medida.nome} (${index + 1}/${medida.quantidade})` : medida.nome
+          }))
         })
-        
-        if (ambientesValidos.length === 0) continue
-        
-        // Converter ambientes
-        const ambientesPVC: AmbientePVC[] = ambientesValidos.map(ambiente => ({
-          id: ambiente.id,
-          largura: parseFloat(ambiente.largura.replace(',', '.')),
-          comprimento: parseFloat(ambiente.altura.replace(',', '.')),
-          descricao: `${medida.nome} - Ambiente ${ambiente.id.split('-')[1]}`
-        }))
-        
-        // Calcular área total
-        const area = ambientesPVC.reduce((total, amb) => total + (amb.largura * amb.comprimento), 0)
-        
-        const comodoPVC: ComodoPVC = {
-          id: medida.id,
-          nome: medida.nome,
-          ambientes: ambientesPVC,
-          area,
-          tipoComodo: medida.tipo === 'em_l' ? 'em_l' : 'retangular'
-        }
-        
-        comodosParaCalcular.push(comodoPVC)
-      }
       
-      if (comodosParaCalcular.length === 0) {
-        alert('Adicione pelo menos um cômodo com medidas válidas para calcular')
+      if (ambientesParaCalculo.length === 0) {
+        alert('Adicione pelo menos uma medida válida para calcular')
         return
       }
       
@@ -299,7 +265,7 @@ export default function ForroPVCPage() {
       
       // Executar cálculo real
       const resultado = calculator.calcular(
-        comodosParaCalcular,
+        ambientesParaCalculo,
         [], // Medidas extras (implementar depois)
         especificacoes,
         vaos
@@ -320,17 +286,11 @@ export default function ForroPVCPage() {
     const novoItem: Medida = {
       id: novaId,
       nome: '',
+      altura: alturaFixaAtivada ? ultimaAlturaUsada : '', // ✨ Altura fixa se ativada
+      largura: '', // Largura sempre vazia para novo ambiente
+      quantidade: 1, // ✨ Padrão: 1 ambiente
       descricao: '',
-      tipo: 'retangular',
-      ambientes: [
-        {
-          id: `${novaId}-1`,
-          altura: '',
-          largura: '',
-          area: 0
-        }
-      ],
-      areaTotal: 0,
+      area: 0,
       especificacoes: especificacoesPadrao ? {
         tipoPVC: especificacoesPadrao.tipoPVC,
         perfis: especificacoesPadrao.perfis,
@@ -367,50 +327,6 @@ export default function ForroPVCPage() {
     setActiveTab('medidas')
   }
 
-  const adicionarAmbiente = (medidaId: string) => {
-    setMedidas(medidas.map(medida => {
-      if (medida.id === medidaId) {
-        const novoAmbienteId = `${medidaId}-${medida.ambientes.length + 1}`
-        const novoAmbiente: Ambiente = {
-          id: novoAmbienteId,
-          altura: '',
-          largura: '',
-          area: 0
-        }
-        
-        const ambientesAtualizados = [...medida.ambientes, novoAmbiente]
-        const tipo = ambientesAtualizados.length > 1 ? 'em_l' : 'retangular'
-        const areaTotal = ambientesAtualizados.reduce((total, amb) => total + amb.area, 0)
-        
-        return {
-          ...medida,
-          tipo,
-          ambientes: ambientesAtualizados,
-          areaTotal
-        }
-      }
-      return medida
-    }))
-  }
-
-  const removerAmbiente = (medidaId: string, ambienteId: string) => {
-    setMedidas(medidas.map(medida => {
-      if (medida.id === medidaId && medida.ambientes.length > 1) {
-        const ambientesAtualizados = medida.ambientes.filter(amb => amb.id !== ambienteId)
-        const tipo = ambientesAtualizados.length > 1 ? 'em_l' : 'retangular'
-        const areaTotal = ambientesAtualizados.reduce((total, amb) => total + amb.area, 0)
-        
-        return {
-          ...medida,
-          tipo,
-          ambientes: ambientesAtualizados,
-          areaTotal
-        }
-      }
-      return medida
-    }))
-  }
-
   const removerMedida = (id: string) => {
     if (medidas.length > 1) {
       setMedidas(medidas.filter(m => m.id !== id))
@@ -433,12 +349,13 @@ export default function ForroPVCPage() {
         } else {
           const updated = { ...medida, [campo]: valor }
           
-          // Recalcular área total dos ambientes
-          if (campo === 'ambientes') {
-            updated.areaTotal = valor.reduce((total: number, amb: Ambiente) => total + amb.area, 0)
-            updated.tipo = valor.length > 1 ? 'em_l' : 'retangular'
+          // Calcular área automaticamente (incluindo quantidade)
+          if (campo === 'altura' || campo === 'largura' || campo === 'quantidade') {
+            const altura = parseFloat((campo === 'altura' ? valor : updated.altura).replace(',', '.')) || 0
+            const largura = parseFloat((campo === 'largura' ? valor : updated.largura).replace(',', '.')) || 0
+            const quantidade = campo === 'quantidade' ? valor : updated.quantidade
+            updated.area = altura * largura * quantidade
           }
-          
           return updated
         }
       }
@@ -446,37 +363,8 @@ export default function ForroPVCPage() {
     }))
   }
 
-  const atualizarAmbiente = (medidaId: string, ambienteId: string, campo: 'altura' | 'largura', valor: string) => {
-    setMedidas(medidas.map(medida => {
-      if (medida.id === medidaId) {
-        const ambientesAtualizados = medida.ambientes.map(ambiente => {
-          if (ambiente.id === ambienteId) {
-            const ambienteAtualizado = { ...ambiente, [campo]: valor }
-            
-            // Recalcular área do ambiente
-            const altura = parseFloat(ambienteAtualizado.altura.replace(',', '.')) || 0
-            const largura = parseFloat(ambienteAtualizado.largura.replace(',', '.')) || 0
-            ambienteAtualizado.area = altura * largura
-            
-            return ambienteAtualizado
-          }
-          return ambiente
-        })
-        
-        // Recalcular área total do cômodo
-        const areaTotal = ambientesAtualizados.reduce((total, amb) => total + amb.area, 0)
-        
-        return {
-          ...medida,
-          ambientes: ambientesAtualizados,
-          areaTotal
-        }
-      }
-      return medida
-    }))
-  }
-
-  const areaTotal = medidas.reduce((total, medida) => total + medida.areaTotal, 0)
+  const areaTotal = medidas.reduce((total, medida) => total + medida.area, 0)
+  const totalAmbientes = medidas.reduce((total, medida) => total + medida.quantidade, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (medida: Medida) => {
@@ -544,13 +432,6 @@ export default function ForroPVCPage() {
             </div>
             <div className="flex items-center space-x-3">
               <NavigationHelp navigation={navigation} />
-              <button 
-                onClick={calcularMateriais}
-                className="btn-secondary flex items-center"
-              >
-                <Calculator className="h-4 w-4 mr-2" />
-                Calcular Materiais
-              </button>
               <button className="btn-secondary flex items-center">
                 <FileText className="h-4 w-4 mr-2" />
                 Salvar Projeto
@@ -574,23 +455,23 @@ export default function ForroPVCPage() {
             {/* Cards de Informação */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white rounded-lg shadow p-6 text-center">
-                <Ruler className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                <Ruler className="h-8 w-8 text-orange-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Área Total</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {areaTotal.toFixed(2)} m²
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {medidas.length} cômodo{medidas.length !== 1 ? 's' : ''}
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow p-6 text-center">
-                <Layers className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-                <div className="text-sm text-gray-600">Cômodos</div>
-                <div className="text-2xl font-bold text-gray-900">{medidas.length}</div>
+                <Layers className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                <div className="text-sm text-gray-600">Ambientes</div>
+                <div className="text-2xl font-bold text-gray-900">{totalAmbientes}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> novo cômodo
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                   <br />
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Shift+Tab</kbd> novo ambiente
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova • <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
                 </div>
               </div>
             </div>
@@ -631,7 +512,7 @@ export default function ForroPVCPage() {
                       Lista de Materiais
                     </button>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 pb-4">
                     {activeTab === 'medidas' && (
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -670,12 +551,12 @@ export default function ForroPVCPage() {
                     {medidas.length === 0 && (
                       <div className="text-center py-8">
                         <Ruler className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <div className="text-gray-600">Nenhum cômodo adicionado</div>
+                        <div className="text-gray-600">Nenhuma medida adicionada</div>
                         <button
                           onClick={adicionarMedida}
                           className="mt-3 btn-primary"
                         >
-                          Adicionar Primeiro Cômodo
+                          Adicionar Primeira Medida
                         </button>
                       </div>
                     )}
@@ -684,25 +565,15 @@ export default function ForroPVCPage() {
                       {medidas.slice().reverse().map((medida, reverseIndex) => {
                         const displayNumber = medidas.length - reverseIndex;
                         return (
-                          <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-comodo-id={medida.id}>
+                          <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-medida-id={medida.id}>
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-green-600">{displayNumber}</span>
+                                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-primary-600">{displayNumber}</span>
                                 </div>
-                                {medida.tipo === 'em_l' && (
-                                  <div className="flex items-center text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
-                                    <Square className="h-3 w-3 mr-1" />
-                                    Em L
-                                  </div>
-                                )}
-                                <input
-                                  type="text"
-                                  value={medida.nome}
-                                  onChange={(e) => atualizarMedida(medida.id, 'nome', e.target.value)}
-                                  className="text-sm font-medium bg-transparent border-none focus:ring-0 p-0"
-                                  placeholder="Nome do cômodo"
-                                />
+                                <div className="text-sm text-gray-600">
+                                  {medida.area.toFixed(2)} m² {medida.quantidade > 1 ? `(${medida.quantidade}× ambientes)` : ''}
+                                </div>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <div className="flex items-center space-x-1 mr-3">
@@ -738,9 +609,6 @@ export default function ForroPVCPage() {
                                     <Flag className="h-3 w-3" />
                                   </button>
                                 </div>
-                                <div className="text-sm text-gray-600">
-                                  {medida.areaTotal.toFixed(2)} m²
-                                </div>
                                 {medidas.length > 1 && (
                                   <button
                                     onClick={() => removerMedida(medida.id)}
@@ -752,115 +620,95 @@ export default function ForroPVCPage() {
                               </div>
                             </div>
                             
-                            {/* Layout Simples - Primeiro Ambiente (Padrão Divisória Drywall) */}
-                            <div className="mb-4">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                  <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
-                                  <input
-                                    type="text"
-                                    value={medida.ambientes[0]?.largura || ''}
-                                    onChange={(e) => atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'largura', e.target.value)}
-                                    onBlur={(e) => {
-                                      const formatted = handleDimensionBlur('largura', e.target.value)
-                                      atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'largura', formatted)
-                                    }}
-                                    className="input-field text-sm"
-                                    placeholder="3,50"
-                                  />
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="block text-xs text-gray-600">Largura (m)</label>
+                                  <div className="flex items-center space-x-1">
+                                    <span className="text-xs text-gray-500">×</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="99"
+                                      value={medida.quantidade === 1 ? '' : medida.quantidade}
+                                      onChange={(e) => atualizarMedida(medida.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                      className="w-14 h-5 text-xs border border-gray-300 rounded pl-1 pr-1 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                      placeholder=""
+                                      title="Quantidade de ambientes iguais (deixe vazio para 1 ambiente)"
+                                      tabIndex={-1}
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
-                                  <input
-                                    type="text"
-                                    value={medida.ambientes[0]?.altura || ''}
-                                    onChange={(e) => atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'altura', e.target.value)}
-                                    onBlur={(e) => {
-                                      const formatted = handleDimensionBlur('altura', e.target.value)
-                                      atualizarAmbiente(medida.id, medida.ambientes[0]?.id || '1-1', 'altura', formatted)
-                                    }}
-                                    className="input-field text-sm"
-                                    placeholder="2,70"
-                                  />
+                                <input
+                                  type="text"
+                                  value={medida.largura}
+                                  onChange={(e) => atualizarMedida(medida.id, 'largura', e.target.value)}
+                                  onBlur={(e) => {
+                                    const formatted = handleDimensionBlur('largura', e.target.value)
+                                    atualizarMedida(medida.id, 'largura', formatted)
+                                  }}
+                                  onKeyDown={handleKeyDown}
+                                  className="input-field text-sm"
+                                  placeholder="3,50"
+                                  data-nav-index={0}
+                                />
+                              </div>
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="block text-xs text-gray-600">Altura (m)</label>
+                                  <div className="flex items-center space-x-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={alturaFixaAtivada}
+                                      onChange={(e) => setAlturaFixaAtivada(e.target.checked)}
+                                      className="w-3 h-3 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
+                                      title="Usar última altura inserida nos próximos ambientes"
+                                      tabIndex={-1}
+                                    />
+                                    <span className="text-xs text-gray-500" title="Usar última altura inserida nos próximos ambientes">fixar</span>
+                                  </div>
                                 </div>
-                                <div>
-                                  <label className="block text-xs text-gray-600 mb-1">Descrição</label>
-                                  <input
-                                    type="text"
-                                    value={medida.descricao}
-                                    onChange={(e) => atualizarMedida(medida.id, 'descricao', e.target.value)}
-                                    className="input-field text-sm"
-                                    placeholder="Ex: Sala, Quarto..."
-                                    data-field="descricao"
-                                  />
-                                </div>
+                                <input
+                                  type="text"
+                                  value={medida.altura}
+                                  onChange={(e) => {
+                                    atualizarMedida(medida.id, 'altura', e.target.value)
+                                    // Salvar altura para próximos ambientes se checkbox ativado
+                                    if (alturaFixaAtivada && e.target.value.trim()) {
+                                      setUltimaAlturaUsada(e.target.value)
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const formatted = handleDimensionBlur('altura', e.target.value)
+                                    atualizarMedida(medida.id, 'altura', formatted)
+                                    // Salvar altura formatada para próximos ambientes se checkbox ativado
+                                    if (formatted.trim()) {
+                                      setUltimaAlturaUsada(formatted)
+                                    }
+                                  }}
+                                  onKeyDown={handleKeyDown}
+                                  className="input-field text-sm"
+                                  placeholder="2,70"
+                                  data-nav-index={1}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Descrição</label>
+                                <input
+                                  type="text"
+                                  value={medida.descricao}
+                                  onChange={(e) => atualizarMedida(medida.id, 'descricao', e.target.value)}
+                                  className="input-field text-sm"
+                                  placeholder="Ex: Sala, Quarto..."
+                                  data-field="descricao"
+                                />
                               </div>
                             </div>
-                            
-                            {/* Ambientes Adicionais (Em L) - Aparecem só quando SHIFT+TAB */}
-                            {medida.ambientes.length > 1 && (
-                              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <div className="flex items-center mb-2">
-                                  <Square className="h-4 w-4 text-red-600 mr-2" />
-                                  <span className="text-sm font-medium text-red-800">Cômodo em L - Ambientes Adicionais</span>
-                                </div>
-                                <div className="space-y-2">
-                                  {medida.ambientes.slice(1).map((ambiente, ambIndex) => (
-                                    <div key={ambiente.id} className="grid grid-cols-6 gap-2 p-2 bg-white rounded" data-ambiente-id={ambiente.id}>
-                                      <div className="col-span-1">
-                                        <div className="flex items-center justify-center h-full">
-                                          <button
-                                            onClick={() => removerAmbiente(medida.id, ambiente.id)}
-                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                            title="Remover ambiente"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                      <div className="col-span-2">
-                                        <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
-                                        <input
-                                          type="text"
-                                          value={ambiente.largura}
-                                          onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'largura', e.target.value)}
-                                          onBlur={(e) => {
-                                            const formatted = handleDimensionBlur('largura', e.target.value)
-                                            atualizarAmbiente(medida.id, ambiente.id, 'largura', formatted)
-                                          }}
-                                          className="input-field text-sm w-full"
-                                          placeholder="3,50"
-                                        />
-                                      </div>
-                                      <div className="col-span-2">
-                                        <label className="block text-xs text-gray-600 mb-1">Comprimento (m)</label>
-                                        <input
-                                          type="text"
-                                          value={ambiente.altura}
-                                          onChange={(e) => atualizarAmbiente(medida.id, ambiente.id, 'altura', e.target.value)}
-                                          onBlur={(e) => {
-                                            const formatted = handleDimensionBlur('altura', e.target.value)
-                                            atualizarAmbiente(medida.id, ambiente.id, 'altura', formatted)
-                                          }}
-                                          className="input-field text-sm w-full"
-                                          placeholder="2,70"
-                                        />
-                                      </div>
-                                      <div className="col-span-1">
-                                        <label className="block text-xs text-gray-600 mb-1">Área</label>
-                                        <div className="text-sm font-medium text-gray-900 py-1">
-                                          {ambiente.area.toFixed(1)}m²
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         )
                       })}
                     </div>
+                    
                   </div>
                 )}
 
@@ -873,7 +721,7 @@ export default function ForroPVCPage() {
                           <div className="text-gray-600">Desenho técnico será gerado após o cálculo</div>
                           <div className="text-sm text-gray-500">Inclui disposição das réguas e pontos de fixação</div>
                           <div className="text-xs text-gray-500 mt-2">
-                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} cômodo{medidas.length !== 1 ? 's' : ''})
+                            Total: {areaTotal.toFixed(2)} m² ({medidas.length} medida{medidas.length !== 1 ? 's' : ''})
                           </div>
                         </div>
                       </div>
@@ -1071,7 +919,7 @@ export default function ForroPVCPage() {
             <div className="bg-white rounded-lg p-6 w-96 max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold">Especificações do Forro</h3>
+                  <h3 className="text-lg font-semibold">Especificações do Ambiente</h3>
                   {medida.especificacoes.preenchido && especificacoesPadrao && (
                     <div className="text-sm text-gray-600 mt-1">
                       {medida.especificacoes.tipoPVC === especificacoesPadrao.tipoPVC &&
@@ -1196,7 +1044,7 @@ export default function ForroPVCPage() {
                     
                     setModalAberto({tipo: null, medidaId: null})
                   }}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                 >
                   Salvar
                 </button>
@@ -1402,7 +1250,7 @@ export default function ForroPVCPage() {
                     atualizarMedida(medida.id, 'vaos', { preenchido: true })
                     setModalAberto({tipo: null, medidaId: null})
                   }}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                 >
                   Salvar
                 </button>
