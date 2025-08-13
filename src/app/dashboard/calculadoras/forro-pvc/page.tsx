@@ -181,7 +181,7 @@ export default function ForroPVCPage() {
           adicionarMedida()
           // Focar no primeiro campo do novo cômodo
           setTimeout(() => {
-            const novoInput = document.querySelector('[data-comodo-id]:first-child [data-ambiente-id] input[type="text"]:first-of-type') as HTMLInputElement
+            const novoInput = document.querySelector('[data-comodo-id]:last-child [data-ambiente-id] input[type="text"]:first-of-type') as HTMLInputElement
             if (novoInput) {
               novoInput.focus()
             }

@@ -61,14 +61,16 @@ export const useKeyboardNavigation = (): KeyboardNavigationHook => {
 
     // Buscar padrões comuns de seletores para diferentes tipos de calculadora
     const possibleSelectors = [
-      // Padrão forro-pvc (cômodos)
-      '[data-comodo-id]:first-child [data-ambiente-id] input[type="text"]:first-of-type',
-      // Padrão outras calculadoras (medidas)
-      '[data-medida-id]:first-child input[type="text"]',
+      // Padrão forro-pvc (cômodos) - último elemento DOM (primeiro visualmente)
+      '[data-comodo-id]:last-child [data-ambiente-id] input[type="text"]:first-of-type',
+      // Padrão outras calculadoras (medidas) - último elemento DOM (primeiro visualmente)
+      '[data-medida-id]:last-child input[type="text"]',
+      '[data-medida-id]:last-child input[type="number"]',
+      '[data-ambiente-id]:last-child input[type="number"]',
       // Padrão alternativo por data-field
-      `[data-field="${firstField.name}"]:first-of-type`,
-      // Padrão geral (primeiro input de texto)
-      'input[type="text"]:first-of-type'
+      `[data-field="${firstField.name}"]:last-of-type`,
+      // Padrão geral (último input de texto adicionado)
+      'input[type="text"]:last-of-type'
     ]
 
     for (const selector of possibleSelectors) {

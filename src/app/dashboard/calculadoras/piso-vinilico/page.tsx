@@ -134,7 +134,7 @@ export default function PisoVinicilicoPage() {
         adicionarMedida()
         // Focar no primeiro campo (largura) da nova medida após um pequeno delay
         setTimeout(() => {
-          const novoInput = document.querySelector('[data-medida-id]:first-child input[type="text"]') as HTMLInputElement
+          const novoInput = document.querySelector('[data-medida-id]:last-child input[type="text"]') as HTMLInputElement
           if (novoInput) {
             novoInput.focus()
           }

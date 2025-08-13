@@ -180,7 +180,7 @@ export default function ForroModularPage() {
         adicionarAmbiente()
         // Focar no primeiro campo (largura) do novo ambiente após um pequeno delay
         setTimeout(() => {
-          const novoInput = document.querySelector('[data-ambiente-id]:first-child input[type="number"]') as HTMLInputElement
+          const novoInput = document.querySelector('[data-ambiente-id]:last-child input[type="number"]') as HTMLInputElement
           if (novoInput) {
             novoInput.focus()
           }
