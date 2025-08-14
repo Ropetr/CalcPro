@@ -383,6 +383,16 @@ export default function PisoWallDrawing({
           className="bg-white"
         >
           
+          {/* Linha de contorno do ambiente - PRIMEIRO para ficar atrás */}
+          <g stroke="#000000" strokeWidth="2" fill="none">
+            <rect
+              x="0"
+              y="0"
+              width={larguraMedida * pixelsPorMetro}
+              height={comprimentoMedida * pixelsPorMetro}
+            />
+          </g>
+          
           {/* Grid de chapas */}
           {renderGridChapas()}
           
@@ -541,16 +551,6 @@ export default function PisoWallDrawing({
               
               return cotas
             })()}
-          </g>
-          
-          {/* Linha de contorno do ambiente */}
-          <g stroke="#000000" strokeWidth="2" fill="none">
-            <rect
-              x="0"
-              y="0"
-              width={larguraMedida * pixelsPorMetro}
-              height={comprimentoMedida * pixelsPorMetro}
-            />
           </g>
         </svg>
       </div>
