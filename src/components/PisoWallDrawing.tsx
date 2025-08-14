@@ -146,7 +146,7 @@ export default function PisoWallDrawing({
         {/* Número da chapa centralizado */}
         {(() => {
           const numero = chapaIndex + 1
-          const podeRenderizar = width > 30 && height > 30
+          const podeRenderizar = (width > 25 && height > 15) || (width > 15 && height > 25) // Flexível para peças pequenas
           console.log(`Painel ${numero}: width=${width.toFixed(1)}, height=${height.toFixed(1)}, renderizar=${podeRenderizar}`)
           
           return podeRenderizar ? (
@@ -154,10 +154,10 @@ export default function PisoWallDrawing({
               <circle
                 cx={posX + width/2}
                 cy={posY + height/2}
-                r={Math.max(12, Math.min(18, width/10))}
+                r={Math.max(8, Math.min(18, Math.min(width, height)/6))}
                 fill="white"
                 stroke="#374151"
-                strokeWidth="2"
+                strokeWidth="1.5"
                 opacity="0.95"
               />
               <text
@@ -165,7 +165,7 @@ export default function PisoWallDrawing({
                 y={posY + height/2}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={Math.max(10, Math.min(14, width/10))}
+                fontSize={Math.max(8, Math.min(14, Math.min(width, height)/8))}
                 fill="#374151"
                 fontWeight="700"
               >
@@ -282,6 +282,7 @@ export default function PisoWallDrawing({
         
         // Verificar se esta chapa está dentro da área do ambiente
         const dentroDoAmbiente = (x < larguraMedida) && (y < comprimentoMedida)
+        console.log(`🔍 Verificando pos(${x.toFixed(2)}, ${y.toFixed(2)}) - dentroAmbiente: ${dentroDoAmbiente}`)
         
         if (dentroDoAmbiente) {
           // Calcular dimensões efetivas desta chapa considerando deslocamento
@@ -310,10 +311,12 @@ export default function PisoWallDrawing({
           
           // Só renderizar se a chapa tem dimensões mínimas
           if (larguraChapa > 0.1 && comprimentoChapa > 0.1) {
-            console.log(`Renderizando painel ${numeroAtual}: pos(${x.toFixed(2)}, ${y.toFixed(2)}) - ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m`)
+            console.log(`✅ RENDERIZANDO painel ${numeroAtual}: pos(${x.toFixed(2)}, ${y.toFixed(2)}) - ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m`)
             
             chapas.push(renderChapa(x, y, larguraChapa, comprimentoChapa, numeroAtual - 1, i, j))
             numeroAtual++
+          } else {
+            console.log(`❌ IGNORANDO peça pequena: pos(${x.toFixed(2)}, ${y.toFixed(2)}) - ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m`)
           }
         }
       }
