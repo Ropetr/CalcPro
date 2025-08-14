@@ -1,16 +1,12 @@
-# CLAUDE.md - Contexto Essencial CalcPro 🚀
+﻿# CLAUDE.md - Contexto Essencial CalcPro 🚀
 
-**Última atualização:** 2025-01-13  
+**Última atualização:** 2025-08-13  
 **Deploy:** https://calcpro.app.br (GitHub → Cloudflare Pages INSTANTÂNEO)
 
 ## 🎯 **SEMPRE LEMBRAR - CRÍTICO**
 
-### **Tom e Comunicação**
-- **Tom direto, objetivo, sem floreios** 
-- **Respostas concisas** (máximo 4 linhas, salvo quando pedido detalhes)
-- **Sem preambles** desnecessários ("Aqui está...", "Com base em...")
-- **Uma palavra quando possível**: "4" para "2+2", "Yes" para confirmações
-- **Emojis apenas quando solicitados**
+### **Idioma e Tom**
+- **PORTUGUÊS BRASILEIRO sempre** - Nunca responder em inglês
 
 ### **Deploy e Infraestrutura** 
 - **Deploy é INSTANTÂNEO** via GitHub → Cloudflare Pages
@@ -18,7 +14,7 @@
 - **URL produção:** https://calcpro.app.br
 - **Build:** `npm run build` (Next.js 14 + TypeScript + output: export)
 
-### **Layout Padrão Consolidado (2025-01-13)**
+### **Layout Padrão Consolidado (2025-08-13)**
 - **Campo multiplicador ×:** Pequeno campo ao lado da largura para quantidade (×4 = 4 paredes iguais)
 - **Checkbox altura fixa:** Auto-preenchimento opcional da altura nas próximas medidas  
 - **Grid 3 colunas:** Largura (com ×) | Altura (com ☑fixar) | Descrição
@@ -104,6 +100,65 @@ const [activeTipo, setActiveTipo] = useState<string>('tipo1')
 
 // Parsing para cálculos:
 parseFloat(valor.replace(',', '.'))  // SEMPRE assim!
+```
+
+### **Escala de Desenho Técnico**
+```typescript
+// Padrão universal para todos os desenhos técnicos:
+ESCALA_PADRAO = 1:50  // 1 metro = 20 pixels
+pixelsPorMetro = 20 * scale * (zoomLevel / 100)
+
+// ZOOM PADRÃO CONSOLIDADO (2025-01-14):
+const [zoomLevel, setZoomLevel] = useState(250)  // Abertura padrão 250%
+const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 25, 300))   // Máximo 300%
+const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 25, 250))  // Mínimo 250%
+const handleZoomReset = () => setZoomLevel(250)  // Reset para padrão
+
+// Implementação obrigatória em todos os componentes de desenho:
+// - DrywallDrawing, PisoWallDrawing, ForroPvcDrawing, etc.
+// - Legenda sempre mostra "Escala 1:50" (base 250% zoom padrão)
+// - Range zoom: 250% - 300% para todos os desenhos técnicos
+```
+
+### **Sistema Universal de Aproveitamento de Materiais**
+```typescript
+// Engine Analítico - src/lib/ui-standards/aproveitamento/analitico.ts
+// Baseado em medidas REAIS fornecidas pelo usuário (não tipos fixos)
+
+// Fluxo de Análise:
+// 1. Input: Medidas reais (3,50m × 2,70m, 4,20m × 3,10m, etc.)
+// 2. Análise: Calcular TODOS recortes necessários por ambiente  
+// 3. Aproveitamento INTERNO: Usar sobras do próprio ambiente PRIMEIRO
+// 4. Pool global: Sobras disponíveis para próximos ambientes
+// 5. Otimização: Menor desperdício + máximo aproveitamento
+
+interface MedidaAmbiente {
+  ambiente: string     // "Sala", "Quarto 1", etc.
+  largura: number      // metros (medida real do usuário)
+  comprimento: number  // metros (medida real do usuário)  
+}
+
+interface RecorteNecessario {
+  largura: number      // dimensão exata necessária
+  comprimento: number  // dimensão exata necessária
+  quantidade: number   // quantos recortes desta medida
+  posicao: 'completo' | 'recorte_largura' | 'recorte_comprimento' | 'recorte_canto'
+}
+
+// Resultado por ambiente:
+interface PlanoCorteAmbiente {
+  recortesNecessarios: RecorteNecessario[]    // O QUE precisa
+  materiaisNovos: MaterialPadrao[]            // Material novo a comprar
+  recortesUsados: RecorteDisponivel[]         // Sobras aproveitadas  
+  sobrasGeradas: RecorteDisponivel[]          // Sobras disponíveis
+  aproveitamentoInterno: number               // % aproveitamento no próprio ambiente
+}
+
+// ✅ Sistema inteligente baseado em medidas reais
+// ✅ Aproveitamento interno prioritário (mesmo ambiente)
+// ✅ Pool de sobras entre ambientes
+// ✅ Relatório detalhado por ambiente
+// ✅ Otimização global do conjunto
 ```
 
 ## 🔧 **IMPLEMENTAÇÕES TÉCNICAS CRÍTICAS**
@@ -194,6 +249,67 @@ interface DrywallDrawingProps {
 ## 📅 **CONVERSAS E DESENVOLVIMENTO**
 
 ### Janeiro 2025
+
+#### 2025-01-13 (Tarde): Correção Crítica Parafusos - Contagem Real de Círculos SVG
+**Problema Identificado:**
+- **Função calcularParafusosChapa()** ainda não retorna valores precisos
+- **Resultado atual**: 106-124 parafusos (oscilando entre versões)  
+- **Resultado esperado**: 216 parafusos para parede 3×2,70m, montante 0,60m, chapeamento duplo
+- **Causa raiz**: Fórmulas matemáticas ao invés de contar círculos reais do SVG
+
+**Problema Fundamental Descoberto:**
+- **Incoerência**: O código DESENHA os círculos mas CALCULA com fórmulas separadas
+- **Abordagem correta**: Contar literalmente os elementos `<circle>` renderizados no SVG
+- **Duplicações**: Identificados 6 parafusos extras nas juntas/bordas das faixas (1,20m, 2,40m)
+
+**Implementação Atual:**
+- **Função contarCirculosReais()**: Simula exatamente o código de renderização SVG
+- **Duas etapas**: Círculos das guias (piso+teto) + Círculos dos montantes (verticais)
+- **Debug completo**: Console.log detalhado para rastrear cada contagem
+- **Múltiplos espaçamentos**: Suporte para 0,30m, 0,40m, 0,60m dinâmicamente
+
+**Status**: 🔄 Implementação avançada mas ainda ajustando precisão da contagem
+**Próximos passos**: Continuar depuração para atingir exatamente 216 parafusos
+
+---
+
+#### 2025-08-13: Correção Crítica Parafusos para Chapa - Divisória Drywall
+**Problema Identificado:**
+- **Cálculo incorreto**: Parafusos 3,5x25mm calculados por fórmula genérica (areaLiquida × 25 × 2)
+- **Resultado**: 406 parafusos para parede 3,00 × 2,70m
+- **Esperado**: 216 parafusos baseado no desenho técnico real
+
+**Solução Implementada:**
+- **Nova função**: `calcularParafusosChapa()` em DrywallDrawing.tsx
+- **Cálculo preciso**: Baseado no padrão real do desenho técnico
+- **Integração**: Conectada ao engine de materiais da calculadora
+
+**Implementações Técnicas:**
+```typescript
+// Função exportada para cálculo preciso
+export const calcularParafusosChapa = (parede: MedidaParede) => {
+  // Calcula parafusos das guias (piso + teto)
+  // Considera espaçamento específico dos montantes
+  // Calcula parafusos dos montantes verticais (25cm)
+  // Multiplica por 2 para paredes duplas
+}
+
+// Integração no calculator.ts
+const parafusosChapa = paredes.reduce((total, parede) => {
+  const parafusosPorParede = calcularParafusosChapa(parede)
+  return total + parafusosPorParede
+}, 0)
+```
+
+**Resultados:**
+- **Antes**: ~405 parafusos (fórmula genérica)
+- **Depois**: ~216 parafusos (desenho técnico real)
+- **Precisão**: Cálculo baseado no padrão visual exato
+- **Flexibilidade**: Dinâmico para diferentes espaçamentos (0.30m, 0.40m, 0.60m)
+
+**Status**: ⚠️ Correção implementada mas ainda não funcionando corretamente - necessita ajustes na próxima sessão
+
+---
 
 #### 2025-01-13: Correções UX + Círculos Numerados + Deploy
 **Implementações Realizadas:**
