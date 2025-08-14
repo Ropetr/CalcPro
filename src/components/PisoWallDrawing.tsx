@@ -251,18 +251,20 @@ export default function PisoWallDrawing({
     return <g>{linhasApoios}</g>
   }
 
-  // Renderizar grid de chapas COM AMARRAÇÃO e numeração sequencial
+  // Renderizar grid de chapas COM AMARRAÇÃO e agrupamento por painel original
   const renderGridChapas = () => {
     const chapas = []
-    let numeroAtual = 1
+    const gruposPaineis = new Map() // Agrupar por dimensões do painel original
     
     // Debug
-    console.log(`=== DEBUG PISO WALL ===`)
+    console.log(`=== DEBUG PISO WALL - REVISÃO COMPLETA ===`)
     console.log(`Ambiente: ${larguraMedida}m x ${comprimentoMedida}m`)
     console.log(`Painel: ${painelLargura}m x ${painelComprimento}m`)
     console.log(`Painéis necessários: ${paineisLargura} x ${paineisComprimento}`)
     
-    // Renderizar com desencontro/amarração das juntas
+    // PRIMEIRA PASSADA: Coletar todas as peças e agrupar por painel original
+    const todasAsPecas = []
+    
     for (let j = 0; j < paineisLargura; j++) { // coluna (largura)
       // AMARRAÇÃO: colunas pares começam em 0, colunas ímpares começam deslocadas no comprimento
       const deslocamentoY = (j % 2 === 1) ? painelComprimento / 2 : 0
@@ -282,7 +284,6 @@ export default function PisoWallDrawing({
         
         // Verificar se esta chapa está dentro da área do ambiente
         const dentroDoAmbiente = (x < larguraMedida) && (y < comprimentoMedida)
-        console.log(`🔍 Verificando pos(${x.toFixed(2)}, ${y.toFixed(2)}) - dentroAmbiente: ${dentroDoAmbiente}`)
         
         if (dentroDoAmbiente) {
           // Calcular dimensões efetivas desta chapa considerando deslocamento
@@ -309,20 +310,47 @@ export default function PisoWallDrawing({
             comprimentoChapa = comprimentoMedida - y
           }
           
-          // Só renderizar se a chapa tem dimensões mínimas
+          // Só processar se a chapa tem dimensões mínimas
           if (larguraChapa > 0.1 && comprimentoChapa > 0.1) {
-            console.log(`✅ RENDERIZANDO painel ${numeroAtual}: pos(${x.toFixed(2)}, ${y.toFixed(2)}) - ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m`)
-            
-            chapas.push(renderChapa(x, y, larguraChapa, comprimentoChapa, numeroAtual - 1, i, j))
-            numeroAtual++
-          } else {
-            console.log(`❌ IGNORANDO peça pequena: pos(${x.toFixed(2)}, ${y.toFixed(2)}) - ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m`)
+            todasAsPecas.push({
+              x, y, larguraChapa, comprimentoChapa, i, j,
+              chaveGrupo: `${Math.round(larguraChapa * 100)}_${Math.round(comprimentoChapa * 100)}` // Agrupar por dimensões
+            })
           }
         }
       }
     }
     
-    console.log(`Total de painéis renderizados: ${numeroAtual - 1}`)
+    console.log(`🔍 Total de peças coletadas: ${todasAsPecas.length}`)
+    
+    // SEGUNDA PASSADA: Atribuir números por grupos
+    let numeroGrupo = 1
+    todasAsPecas.forEach(peca => {
+      if (!gruposPaineis.has(peca.chaveGrupo)) {
+        gruposPaineis.set(peca.chaveGrupo, {
+          numero: numeroGrupo++,
+          pecas: [],
+          dimensoes: `${peca.larguraChapa.toFixed(2)}×${peca.comprimentoChapa.toFixed(2)}m`
+        })
+      }
+      gruposPaineis.get(peca.chaveGrupo).pecas.push(peca)
+    })
+    
+    // Debug dos grupos
+    console.log(`📊 Grupos criados:`)
+    gruposPaineis.forEach((grupo, chave) => {
+      console.log(`  Grupo ${grupo.numero} (${chave}): ${grupo.dimensoes} - ${grupo.pecas.length} peças`)
+    })
+    
+    // TERCEIRA PASSADA: Renderizar todas as peças com o número do grupo
+    todasAsPecas.forEach(peca => {
+      const grupo = gruposPaineis.get(peca.chaveGrupo)
+      console.log(`✅ RENDERIZANDO Grupo ${grupo.numero}: pos(${peca.x.toFixed(2)}, ${peca.y.toFixed(2)}) - ${peca.larguraChapa.toFixed(2)}×${peca.comprimentoChapa.toFixed(2)}m`)
+      
+      chapas.push(renderChapa(peca.x, peca.y, peca.larguraChapa, peca.comprimentoChapa, grupo.numero - 1, peca.i, peca.j))
+    })
+    
+    console.log(`🎯 Total de grupos: ${numeroGrupo - 1}`)
     
     return chapas
   }
