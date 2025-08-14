@@ -284,6 +284,7 @@ export default function PisoWallDrawing({
         
         // Verificar se esta chapa está dentro da área do ambiente
         const dentroDoAmbiente = (x < larguraMedida) && (y < comprimentoMedida)
+        console.log(`🔍 Posição (${x.toFixed(2)}, ${y.toFixed(2)}): dentroAmbiente=${dentroDoAmbiente}, coluna=${j}, linha=${i}`)
         
         if (dentroDoAmbiente) {
           // Calcular dimensões efetivas desta chapa considerando deslocamento
@@ -312,10 +313,13 @@ export default function PisoWallDrawing({
           
           // Só processar se a chapa tem dimensões mínimas
           if (larguraChapa > 0.1 && comprimentoChapa > 0.1) {
+            console.log(`✅ COLETANDO peça: ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m na posição (${x.toFixed(2)}, ${y.toFixed(2)})`)
             todasAsPecas.push({
               x, y, larguraChapa, comprimentoChapa, i, j,
               chaveGrupo: `${Math.round(larguraChapa * 100)}_${Math.round(comprimentoChapa * 100)}` // Agrupar por dimensões
             })
+          } else {
+            console.log(`❌ REJEITANDO peça pequena: ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m na posição (${x.toFixed(2)}, ${y.toFixed(2)})`)
           }
         }
       }
