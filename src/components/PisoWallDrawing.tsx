@@ -245,123 +245,43 @@ export default function PisoWallDrawing({
     return <g>{linhasApoios}</g>
   }
 
-  // Renderizar grid de chapas com amarração desencontrada e numeração inteligente
+  // Renderizar grid de chapas com numeração simples e sequencial
   const renderGridChapas = () => {
     const chapas = []
-    const gruposPaineis = [] // Para agrupar recortes do mesmo painel original
+    let numeroAtual = 1
     
     // Debug
+    console.log(`=== DEBUG PISO WALL ===`)
     console.log(`Ambiente: ${larguraMedida}m x ${comprimentoMedida}m`)
-    console.log(`Recorte largura: ${(larguraMedida % painelLargura).toFixed(2)}m`)
-    console.log(`Recorte comprimento: ${(comprimentoMedida % painelComprimento).toFixed(2)}m`)
+    console.log(`Painel: ${painelLargura}m x ${painelComprimento}m`)
+    console.log(`Painéis necessários: ${paineisLargura} x ${paineisComprimento}`)
     
-    // Primeiro passo: identificar todos os recortes e agrupá-los por painel original
+    // Renderizar cada posição sequencialmente
     for (let j = 0; j < paineisLargura; j++) { // coluna (largura)
-      // Desencontro: colunas pares começam em 0, colunas ímpares começam deslocadas no comprimento
-      const deslocamentoY = (j % 2 === 1) ? painelComprimento / 2 : 0
-      
-      // Calcular quantas linhas precisamos (incluindo possível recorte)
-      const linhasNecessarias = Math.ceil(comprimentoMedida / painelComprimento)
-      const linhasComDeslocamento = deslocamentoY > 0 ? linhasNecessarias + 1 : linhasNecessarias
-      
-      for (let i = 0; i < linhasComDeslocamento; i++) {
+      for (let i = 0; i < paineisComprimento; i++) { // linha (comprimento)
         const x = j * painelLargura
-        let y = i * painelComprimento + deslocamentoY
-        
-        // Se há deslocamento e é a primeira linha, pode começar com painel parcial
-        if (deslocamentoY > 0 && i === 0) {
-          y = 0 // Começar do início mesmo com deslocamento
-        }
+        const y = i * painelComprimento
         
         // Verificar se esta chapa está dentro da área do ambiente
         const dentroDoAmbiente = (x < larguraMedida) && (y < comprimentoMedida)
         
         if (dentroDoAmbiente) {
-          // Calcular dimensões efetivas desta chapa considerando deslocamento
-          let larguraChapa = painelLargura
-          let comprimentoChapa = painelComprimento
+          // Calcular dimensões efetivas desta chapa
+          let larguraChapa = Math.min(painelLargura, larguraMedida - x)
+          let comprimentoChapa = Math.min(painelComprimento, comprimentoMedida - y)
           
-          // Ajustar largura se chapa sai do ambiente
-          if (x + painelLargura > larguraMedida) {
-            larguraChapa = larguraMedida - x
-          }
-          
-          // Ajustar comprimento se chapa sai do ambiente
-          if (y + painelComprimento > comprimentoMedida) {
-            comprimentoChapa = comprimentoMedida - y
-          }
-          
-          // Se chapa tem deslocamento e é primeira da linha, pode ser cortada
-          if (deslocamentoY > 0 && i === 0) {
-            comprimentoChapa = Math.min(painelComprimento - deslocamentoY, comprimentoMedida)
-          }
-          
-          // Se é o último painel no comprimento e há recorte, ajustar
-          if (y + painelComprimento > comprimentoMedida && comprimentoMedida % painelComprimento > 0.01) {
-            comprimentoChapa = comprimentoMedida - y
-          }
-          
-          // Só processar se a chapa tem dimensões mínimas
+          // Só renderizar se a chapa tem dimensões mínimas
           if (larguraChapa > 0.1 && comprimentoChapa > 0.1) {
-            // Determinar se é um painel completo ou recorte
-            const ehPainelCompleto = (
-              Math.abs(larguraChapa - painelLargura) < 0.01 && 
-              Math.abs(comprimentoChapa - painelComprimento) < 0.01
-            )
+            console.log(`Renderizando painel ${numeroAtual}: pos(${x.toFixed(2)}, ${y.toFixed(2)}) - ${larguraChapa.toFixed(2)}×${comprimentoChapa.toFixed(2)}m`)
             
-            // Criar chave única para agrupar recortes do mesmo tipo/dimensão
-            const dimensaoKey = `${Math.floor(larguraChapa * 100)}_${Math.floor(comprimentoChapa * 100)}`
-            const chaveGrupo = ehPainelCompleto 
-              ? `completo_${dimensaoKey}` 
-              : `recorte_${dimensaoKey}`
-            
-            // Verificar se já existe um grupo para este tipo de recorte/painel
-            let grupoExistente = gruposPaineis.find(g => g.chave === chaveGrupo)
-            if (!grupoExistente) {
-              grupoExistente = {
-                chave: chaveGrupo,
-                numero: gruposPaineis.length + 1, // Numeração sequencial dos grupos
-                recortes: [],
-                ehCompleto: ehPainelCompleto,
-                dimensoes: { largura: larguraChapa, comprimento: comprimentoChapa }
-              }
-              gruposPaineis.push(grupoExistente)
-            }
-            
-            // Adicionar este recorte ao grupo
-            grupoExistente.recortes.push({ x, y, largura: larguraChapa, comprimento: comprimentoChapa, linha: i, coluna: j })
+            chapas.push(renderChapa(x, y, larguraChapa, comprimentoChapa, numeroAtual - 1, i, j))
+            numeroAtual++
           }
         }
       }
     }
     
-    // Segundo passo: renderizar todas as chapas com numeração por grupo
-    gruposPaineis.forEach(grupo => {
-      grupo.recortes.forEach(recorte => {
-        chapas.push(renderChapa(
-          recorte.x, 
-          recorte.y, 
-          recorte.largura, 
-          recorte.comprimento, 
-          grupo.numero - 1, // -1 porque renderChapa faz +1
-          recorte.linha, 
-          recorte.coluna
-        ))
-      })
-    })
-    
-    // Debug: mostrar grupos criados
-    console.log('=== DEBUG NUMERAÇÃO PISO WALL ===')
-    console.log('Total de grupos criados:', gruposPaineis.length)
-    gruposPaineis.forEach(g => {
-      console.log(`Grupo ${g.numero}: ${g.chave}`)
-      console.log(`  - Dimensões: ${g.dimensoes.largura.toFixed(2)}×${g.dimensoes.comprimento.toFixed(2)}m`)
-      console.log(`  - Quantidade: ${g.recortes.length} peças`)
-      console.log(`  - Tipo: ${g.ehCompleto ? 'painel completo' : 'recorte'}`)
-      g.recortes.forEach((r, idx) => {
-        console.log(`    Peça ${idx+1}: pos(${r.x.toFixed(2)},${r.y.toFixed(2)}) - ${r.largura.toFixed(2)}×${r.comprimento.toFixed(2)}`)
-      })
-    })
+    console.log(`Total de painéis renderizados: ${numeroAtual - 1}`)
     
     return chapas
   }
