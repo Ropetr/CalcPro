@@ -144,30 +144,36 @@ export default function PisoWallDrawing({
         
         
         {/* Número da chapa centralizado */}
-        {width > 30 && height > 30 && (
-          <g>
-            <circle
-              cx={posX + width/2}
-              cy={posY + height/2}
-              r={Math.max(12, Math.min(18, width/10))}
-              fill="white"
-              stroke="#374151"
-              strokeWidth="2"
-              opacity="0.95"
-            />
-            <text
-              x={posX + width/2}
-              y={posY + height/2}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={Math.max(10, Math.min(14, width/10))}
-              fill="#374151"
-              fontWeight="700"
-            >
-              {chapaIndex + 1}
-            </text>
-          </g>
-        )}
+        {(() => {
+          const numero = chapaIndex + 1
+          const podeRenderizar = width > 30 && height > 30
+          console.log(`Painel ${numero}: width=${width.toFixed(1)}, height=${height.toFixed(1)}, renderizar=${podeRenderizar}`)
+          
+          return podeRenderizar ? (
+            <g>
+              <circle
+                cx={posX + width/2}
+                cy={posY + height/2}
+                r={Math.max(12, Math.min(18, width/10))}
+                fill="white"
+                stroke="#374151"
+                strokeWidth="2"
+                opacity="0.95"
+              />
+              <text
+                x={posX + width/2}
+                y={posY + height/2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={Math.max(10, Math.min(14, width/10))}
+                fill="#374151"
+                fontWeight="700"
+              >
+                {numero}
+              </text>
+            </g>
+          ) : null
+        })()}
         
       </g>
     )
