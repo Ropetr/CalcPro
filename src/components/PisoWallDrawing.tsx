@@ -309,10 +309,11 @@ export default function PisoWallDrawing({
               Math.abs(comprimentoChapa - painelComprimento) < 0.01
             )
             
-            // Criar chave única para agrupar recortes do mesmo painel original
+            // Criar chave única para agrupar recortes do mesmo tipo/dimensão
+            const dimensaoKey = `${Math.floor(larguraChapa * 100)}_${Math.floor(comprimentoChapa * 100)}`
             const chaveGrupo = ehPainelCompleto 
-              ? `completo_${j}_${i}` 
-              : `recorte_${Math.floor(larguraChapa * 100)}_${Math.floor(comprimentoChapa * 100)}`
+              ? `completo_${dimensaoKey}` 
+              : `recorte_${dimensaoKey}`
             
             // Verificar se já existe um grupo para este tipo de recorte/painel
             let grupoExistente = gruposPaineis.find(g => g.chave === chaveGrupo)
@@ -350,12 +351,17 @@ export default function PisoWallDrawing({
     })
     
     // Debug: mostrar grupos criados
-    console.log('Grupos de painéis:', gruposPaineis.map(g => ({
-      numero: g.numero,
-      quantidade: g.recortes.length,
-      dimensoes: `${g.dimensoes.largura.toFixed(2)}×${g.dimensoes.comprimento.toFixed(2)}`,
-      tipo: g.ehCompleto ? 'completo' : 'recorte'
-    })))
+    console.log('=== DEBUG NUMERAÇÃO PISO WALL ===')
+    console.log('Total de grupos criados:', gruposPaineis.length)
+    gruposPaineis.forEach(g => {
+      console.log(`Grupo ${g.numero}: ${g.chave}`)
+      console.log(`  - Dimensões: ${g.dimensoes.largura.toFixed(2)}×${g.dimensoes.comprimento.toFixed(2)}m`)
+      console.log(`  - Quantidade: ${g.recortes.length} peças`)
+      console.log(`  - Tipo: ${g.ehCompleto ? 'painel completo' : 'recorte'}`)
+      g.recortes.forEach((r, idx) => {
+        console.log(`    Peça ${idx+1}: pos(${r.x.toFixed(2)},${r.y.toFixed(2)}) - ${r.largura.toFixed(2)}×${r.comprimento.toFixed(2)}`)
+      })
+    })
     
     return chapas
   }
