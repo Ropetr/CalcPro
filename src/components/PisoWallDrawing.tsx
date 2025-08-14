@@ -245,7 +245,7 @@ export default function PisoWallDrawing({
     return <g>{linhasApoios}</g>
   }
 
-  // Renderizar grid de chapas com numeração simples e sequencial
+  // Renderizar grid de chapas COM AMARRAÇÃO e numeração sequencial
   const renderGridChapas = () => {
     const chapas = []
     let numeroAtual = 1
@@ -256,19 +256,51 @@ export default function PisoWallDrawing({
     console.log(`Painel: ${painelLargura}m x ${painelComprimento}m`)
     console.log(`Painéis necessários: ${paineisLargura} x ${paineisComprimento}`)
     
-    // Renderizar cada posição sequencialmente
+    // Renderizar com desencontro/amarração das juntas
     for (let j = 0; j < paineisLargura; j++) { // coluna (largura)
-      for (let i = 0; i < paineisComprimento; i++) { // linha (comprimento)
+      // AMARRAÇÃO: colunas pares começam em 0, colunas ímpares começam deslocadas no comprimento
+      const deslocamentoY = (j % 2 === 1) ? painelComprimento / 2 : 0
+      
+      // Calcular quantas linhas precisamos (incluindo possível recorte)
+      const linhasNecessarias = Math.ceil(comprimentoMedida / painelComprimento)
+      const linhasComDeslocamento = deslocamentoY > 0 ? linhasNecessarias + 1 : linhasNecessarias
+      
+      for (let i = 0; i < linhasComDeslocamento; i++) {
         const x = j * painelLargura
-        const y = i * painelComprimento
+        let y = i * painelComprimento + deslocamentoY
+        
+        // Se há deslocamento e é a primeira linha, pode começar com painel parcial
+        if (deslocamentoY > 0 && i === 0) {
+          y = 0 // Começar do início mesmo com deslocamento
+        }
         
         // Verificar se esta chapa está dentro da área do ambiente
         const dentroDoAmbiente = (x < larguraMedida) && (y < comprimentoMedida)
         
         if (dentroDoAmbiente) {
-          // Calcular dimensões efetivas desta chapa
-          let larguraChapa = Math.min(painelLargura, larguraMedida - x)
-          let comprimentoChapa = Math.min(painelComprimento, comprimentoMedida - y)
+          // Calcular dimensões efetivas desta chapa considerando deslocamento
+          let larguraChapa = painelLargura
+          let comprimentoChapa = painelComprimento
+          
+          // Ajustar largura se chapa sai do ambiente
+          if (x + painelLargura > larguraMedida) {
+            larguraChapa = larguraMedida - x
+          }
+          
+          // Ajustar comprimento se chapa sai do ambiente
+          if (y + painelComprimento > comprimentoMedida) {
+            comprimentoChapa = comprimentoMedida - y
+          }
+          
+          // Se chapa tem deslocamento e é primeira da linha, pode ser cortada
+          if (deslocamentoY > 0 && i === 0) {
+            comprimentoChapa = Math.min(painelComprimento - deslocamentoY, comprimentoMedida)
+          }
+          
+          // Se é o último painel no comprimento e há recorte, ajustar
+          if (y + painelComprimento > comprimentoMedida && comprimentoMedida % painelComprimento > 0.01) {
+            comprimentoChapa = comprimentoMedida - y
+          }
           
           // Só renderizar se a chapa tem dimensões mínimas
           if (larguraChapa > 0.1 && comprimentoChapa > 0.1) {
