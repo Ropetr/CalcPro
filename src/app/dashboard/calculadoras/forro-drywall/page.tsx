@@ -411,14 +411,14 @@ export default function ForroDrywallPage() {
 
       <div className="flex flex-1">
         {/* Sidebar - Removido conforme especificação */}
-        <div className="w-4 bg-gray-100"></div>
+        <div className="hidden sm:block w-4 bg-gray-100"></div>
 
         {/* Main Content - Área de Resultados */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           <div className="max-w-4xl mx-auto">
             {/* Cards de Informação */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 text-center">
                 <Ruler className="h-8 w-8 text-blue-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Área Total</div>
                 <div className="text-2xl font-bold text-gray-900">
@@ -428,7 +428,7 @@ export default function ForroDrywallPage() {
                   {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow p-6 text-center">
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 text-center">
                 <Building2 className="h-8 w-8 text-green-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Forros</div>
                 <div className="text-2xl font-bold text-gray-900">{totalForros}</div>
@@ -441,7 +441,7 @@ export default function ForroDrywallPage() {
             </div>
 
             {/* Área de Desenho Técnico com Abas */}
-            <div className="bg-white rounded-lg shadow mb-8">
+            <div className="bg-white rounded-lg shadow mb-6 sm:mb-8">
               <div className="border-b border-gray-200">
                 <div className="flex items-center justify-between p-6 pb-0">
                   <div className="flex space-x-8">

@@ -1,4 +1,5 @@
 import { MedidaParede, CalculoMaterial, ResultadoCalculoDrywall, ConfiguracaoABNT } from './types'
+import { calcularParafusosDrywall, calcularParafusosChapa } from '@/components/DrywallDrawing'
 
 /**
  * Calculadora de Divisória Drywall
@@ -533,24 +534,26 @@ export class DrywallCalculator {
   private calcularFixacao(paredes: MedidaParede[], areaLiquida: number, modalidade: 'abnt' | 'basica'): CalculoMaterial[] {
     const fixacao: CalculoMaterial[] = []
     
-    // Parafusos para chapa: 25 unidades por m²
-    const parafusosChapa = Math.ceil(areaLiquida * 25 * 2) // 2 lados da parede
-    
-    // Parafusos para estrutura: 6 unidades por metro linear de montante
-    const metrosLinearesMontante = paredes.reduce((total, parede) => {
-      const espacamento = parseFloat(parede.especificacoes.espacamentoMontante)
-      const quantidadeMontantes = Math.ceil(parede.largura / espacamento) + 1
-      return total + (quantidadeMontantes * parede.altura)
+    // 🔩 PARAFUSOS PARA CHAPA: Cálculo PRECISO baseado no desenho técnico real
+    const parafusosChapa = paredes.reduce((total, parede) => {
+      const parafusosPorParede = calcularParafusosChapa(parede)
+      console.log(`🔩 Parede ${parede.largura}×${parede.altura}m (${parede.especificacoes.espacamentoMontante}m): ${parafusosPorParede} parafusos para chapa`)
+      return total + parafusosPorParede
     }, 0)
     
-    const parafusosEstrutura = Math.ceil(metrosLinearesMontante * 6)
+    // 🔩 PARAFUSOS PARA ESTRUTURA: Cálculo PRECISO baseado no espaçamento real
+    const parafusosEstrutura = paredes.reduce((total, parede) => {
+      const parafusosPorParede = calcularParafusosDrywall(parede)
+      console.log(`🎯 Parede ${parede.largura}×${parede.altura}m (${parede.especificacoes.espacamentoMontante}m): ${parafusosPorParede} parafusos`)
+      return total + parafusosPorParede
+    }, 0)
     
     fixacao.push({
       item: 'Parafuso para Chapa',
       descricao: 'Parafuso autobrocante 3,5x25mm',
       quantidade: parafusosChapa,
       unidade: 'un',
-      observacoes: '25 parafusos por m² (ambos os lados)'
+      observacoes: 'Baseado no desenho técnico real (parafusos das chapas)'
     })
     
     fixacao.push({
@@ -558,7 +561,7 @@ export class DrywallCalculator {
       descricao: 'Parafuso autobrocante 3,5x9,5mm',
       quantidade: parafusosEstrutura,
       unidade: 'un',
-      observacoes: '6 parafusos por metro linear de montante'
+      observacoes: 'Baseado no desenho técnico real (guias + montantes)'
     })
     
     return fixacao

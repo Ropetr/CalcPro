@@ -2,11 +2,159 @@
 
 import React, { useState } from 'react'
 import { MedidaParede } from '@/lib/calculators/divisoria-drywall/types'
+import { analisarCortesOtimizados } from '@/lib/calculators/divisoria-drywall/otimizacao-cortes'
 
 interface DrywallDrawingProps {
   parede: MedidaParede
   scale?: number
   numeroParede?: number
+}
+
+// Função exportada para calcular parafusos no engine de materiais
+export const calcularParafusosDrywall = (parede: MedidaParede) => {
+  const espacamentoMontantes = parseFloat(parede.especificacoes.espacamentoMontante)
+  const FAIXA_LARGURA = 1.2
+  const numFaixas = Math.ceil(parede.largura / FAIXA_LARGURA)
+  
+  // Parafusos das guias baseado no espaçamento
+  let parafusosGuiasPorFaixa = 0
+  if (espacamentoMontantes === 0.30) {
+    parafusosGuiasPorFaixa = 4 // 15cm: 0,15-0,45-0,75-1,05
+  } else if (espacamentoMontantes === 0.40) {
+    parafusosGuiasPorFaixa = 3 // 20cm: 0,20-0,60-1,00
+  } else {
+    parafusosGuiasPorFaixa = 4 // 0,60m: 0,20-0,40-0,80-1,00
+  }
+  
+  // Parafusos das montantes
+  const espacamento = espacamentoMontantes
+  const parafusosInternos = []
+  let posicaoNaFaixa = espacamento
+  while (posicaoNaFaixa < 1.18) { // Até quase 1,20m
+    parafusosInternos.push(posicaoNaFaixa)
+    posicaoNaFaixa += espacamento
+  }
+  
+  const parafusosGuias = parafusosGuiasPorFaixa * numFaixas * 2 // piso + teto
+  const segmentosVerticais = Math.max(8, Math.ceil(parede.altura / 0.25)) // Min 8 segmentos
+  const parafusosMontantes = parafusosInternos.length * numFaixas * segmentosVerticais
+  
+  return parafusosGuias + parafusosMontantes
+}
+
+// Função para contar círculos reais renderizados no SVG
+const contarCirculosReais = (parede: MedidaParede, ladoAtivo: 'A' | 'A2' | 'B' | 'B2' = 'A') => {
+  // Esta função simula exatamente o que o DrywallDrawing renderiza para contar círculos
+  const finalScale = 50 // Scale padrão
+  const espacamentoMontantes = parseFloat(parede.especificacoes.espacamentoMontante)
+  
+  let totalCirculos = 0
+  
+  // 1. CONTAR CÍRCULOS DAS GUIAS (igual ao código linha 1271-1379)
+  const parafusosInternos = []
+  const MARGEM_BORDA = 0.02
+  let posicaoNaFaixa = espacamentoMontantes
+  while (posicaoNaFaixa < (1.2 - MARGEM_BORDA)) {
+    parafusosInternos.push(posicaoNaFaixa)
+    posicaoNaFaixa += espacamentoMontantes
+  }
+  
+  let parafusosBase: number[] = []
+  if (espacamentoMontantes === 0.30) {
+    let posicao = 0.15
+    while (posicao <= 1.05) {
+      parafusosBase.push(posicao)
+      posicao += 0.15
+    }
+  } else {
+    parafusosBase = [0.20, 0.40, 0.60, 0.80, 1.00]
+  }
+  
+  const padraoParafusosPorFaixa = parafusosBase.filter(posicao => {
+    return !parafusosInternos.some(montante => Math.abs(posicao - montante) < 0.01)
+  })
+  
+  const numFaixasGuia = Math.ceil(parede.largura / 1.2)
+  
+  // Contar círculos das guias (piso + teto)
+  for (let faixa = 0; faixa < numFaixasGuia; faixa++) {
+    const inicioFaixa = faixa * 1.2
+    const fimFaixa = Math.min((faixa + 1) * 1.2, parede.largura)
+    
+    padraoParafusosPorFaixa.forEach((posicaoRelativa) => {
+      const xParafuso = (inicioFaixa + posicaoRelativa) * finalScale
+      
+      if (xParafuso <= fimFaixa * finalScale && xParafuso <= parede.largura * finalScale) {
+        // Círculo piso (linha 1330-1339)
+        totalCirculos += 1
+        // Círculo teto (linha 1341-1350)  
+        totalCirculos += 1
+      }
+    })
+  }
+  
+  // 2. CONTAR CÍRCULOS DOS MONTANTES (lado A - linha 1382+)
+  if (ladoAtivo === 'A') {
+    const numFaixas = Math.ceil(parede.largura / 1.2)
+    
+    for (let faixa = 0; faixa < numFaixas; faixa++) {
+      const inicioFaixa = faixa * 1.2
+      const larguraFaixa = Math.min(1.2, parede.largura - inicioFaixa)
+      
+      parafusosInternos.forEach(posRelativa => {
+        if (posRelativa < larguraFaixa) {
+          const xMontante = inicioFaixa + posRelativa
+          
+          if (xMontante <= parede.largura) {
+            // Para cada montante, contar círculos verticais
+            // Baseado na função distribuirParafusosSegmento (linha 1387+)
+            const alturaSegmento = 1.2
+            const numSegmentos = Math.ceil(parede.altura / alturaSegmento)
+            
+            for (let seg = 0; seg < numSegmentos; seg++) {
+              const yInicio = seg * alturaSegmento  
+              const yFim = Math.min((seg + 1) * alturaSegmento, parede.altura)
+              
+              // Parafusos fixos: base e topo (2 círculos)
+              totalCirculos += 2
+              
+              // Parafusos intermediários a cada 25cm
+              const alturaSegmentoReal = yFim - yInicio
+              if (alturaSegmentoReal > 0.10) {
+                const espacamento = 0.25
+                let yPos = yInicio + 0.05 + espacamento
+                while (yPos < yFim - 0.05) {
+                  totalCirculos += 1
+                  yPos += espacamento
+                }
+              }
+            }
+          }
+        }
+      })
+    }
+  }
+  
+  return totalCirculos
+}
+
+// Função exportada para calcular parafusos para chapa (3,5x25mm)
+export const calcularParafusosChapa = (parede: MedidaParede) => {
+  const multiplicadorLados = parede.especificacoes.chapasPorLado === 'duplo' ? 2 : 1
+  
+  // Contar círculos reais do desenho (um lado apenas)
+  const circulosUmLado = contarCirculosReais(parede, 'A')
+  
+  console.log(`🎯 CONTAGEM REAL DE CÍRCULOS:`, {
+    parede: `${parede.largura}×${parede.altura}m`,
+    espacamento: `${parede.especificacoes.espacamentoMontante}m`,
+    circulosUmLado,
+    chapeamento: parede.especificacoes.chapasPorLado,
+    multiplicador: multiplicadorLados,
+    total: circulosUmLado * multiplicadorLados
+  })
+  
+  return circulosUmLado * multiplicadorLados
 }
 
 export default function DrywallDrawing({ parede, scale = 50, numeroParede }: DrywallDrawingProps) {
@@ -37,7 +185,85 @@ export default function DrywallDrawing({ parede, scale = 50, numeroParede }: Dry
   // SVG sempre do mesmo tamanho (apenas um lado por vez) 
   const svgWidth = Math.max(finalWidth + 120, 600) // Margem para cotas
   const svgHeight = Math.max(finalHeight + 100, 400) // Margem para cotas
+  
+  // Função para calcular posições dos parafusos baseado no espaçamento configurado por faixa
+  const calcularParafusosPorFaixa = () => {
+    const espacamento = parseFloat(parede.especificacoes.espacamentoMontante)
+    const FAIXA_LARGURA = 1.2 // 1,20m por faixa
+    const MARGEM_BORDA = 0.02 // 2cm das bordas
+    
+    const parafusosPorFaixa: number[] = []
+    
+    // Calcular quantas montantes cabem em 1,20m com o espaçamento configurado
+    let posicaoNaFaixa = espacamento
+    while (posicaoNaFaixa < (FAIXA_LARGURA - MARGEM_BORDA)) {
+      parafusosPorFaixa.push(posicaoNaFaixa)
+      posicaoNaFaixa += espacamento
+    }
+    
+    return parafusosPorFaixa
+  }
+  
+  const parafusosInternos = calcularParafusosPorFaixa()
+  
+  // Função para calcular total de parafusos 3,5x25mm baseado no desenho real
+  const calcularTotalParafusos = () => {
+    const espacamentoMontantes = parseFloat(parede.especificacoes.espacamentoMontante)
+    const FAIXA_LARGURA = 1.2
+    const numFaixas = Math.ceil(parede.largura / FAIXA_LARGURA)
+    
+    // Calcular parafusos das guias (piso e teto)
+    let parafusosGuiasPorFaixa = 0
+    if (espacamentoMontantes === 0.30) {
+      // 0,15 - 0,45 - 0,75 - 1,05 (evitando 0,30 - 0,60 - 0,90)
+      parafusosGuiasPorFaixa = 4
+    } else {
+      // Outros espaçamentos (0,40 e 0,60): padrão 20cm evitando montantes
+      if (espacamentoMontantes === 0.40) {
+        // 0,20 - 0,60 - 1,00 (evitando 0,40 - 0,80)
+        parafusosGuiasPorFaixa = 3
+      } else {
+        // 0,60m: 0,20 - 0,40 - 0,80 - 1,00 (evitando 0,60)
+        parafusosGuiasPorFaixa = 4
+      }
+    }
+    
+    const parafusosGuias = parafusosGuiasPorFaixa * numFaixas * 2 // piso + teto
+    
+    // Calcular parafusos das montantes verticais
+    const montantesPorFaixa = parafusosInternos.length
+    const segmentosVerticais = Math.ceil(parede.altura / 0.25) // Aproximadamente a cada 25cm na vertical
+    const parafusosMontantes = montantesPorFaixa * numFaixas * segmentosVerticais
+    
+    return {
+      guias: parafusosGuias,
+      montantes: parafusosMontantes,
+      total: parafusosGuias + parafusosMontantes,
+      detalhes: {
+        espacamento: espacamentoMontantes,
+        faixas: numFaixas,
+        parafusosGuiasPorFaixa,
+        montantesPorFaixa,
+        segmentosVerticais
+      }
+    }
+  }
+  
+  const analiseParafusos = calcularTotalParafusos()
+  
+  // Log da análise para visualização (remover após implementação no cálculo de materiais)
+  console.log(`🔩 ANÁLISE PARAFUSOS 3,5×25mm - Parede ${parede.largura}×${parede.altura}m:`, {
+    espacamento: `${analiseParafusos.detalhes.espacamento}m`,
+    total: `${analiseParafusos.total} unidades`,
+    guias: `${analiseParafusos.guias} (piso + teto)`,
+    montantes: `${analiseParafusos.montantes} (verticais)`,
+    detalhamento: analiseParafusos.detalhes
+  })
 
+  // Função exportada para calcular parafusos para chapa (3,5x25mm) no engine de materiais
+  const calcularParafusosChapa = () => {
+    return calcularTotalParafusos().total
+  }
 
   // Calcular vãos
   const vaos: any[] = []
@@ -250,7 +476,68 @@ export default function DrywallDrawing({ parede, scale = 50, numeroParede }: Dry
               const placaAlturaPx = PLACA_ALTURA * finalScale
               
               // ALGORITMO DE APROVEITAMENTO DE SOBRAS
-              const calcularPadraoAmarracao = (larguraParede: number, alturaParede: number) => {
+              const calcularPadraoAmarracaoInteligente = (larguraParede: number, alturaParede: number) => {
+                // 🚀 SISTEMA INTELIGENTE - Usar análise combinatória otimizada
+                try {
+                  const tipoChapa = parede.especificacoes.tipoChapa
+                  const analiseOtimizada = analisarCortesOtimizados(alturaParede, tipoChapa, 0.30)
+                  const melhorSolucao = analiseOtimizada.recomendacao
+                  
+                  console.log(`🧠 AMARRAÇÃO INTELIGENTE - Parede ${larguraParede.toFixed(2)}×${alturaParede.toFixed(2)}m`)
+                  console.log(`🎯 Melhor solução: Divisão ${melhorSolucao.divisao}, Aproveitamento: ${melhorSolucao.aproveitamento.toFixed(1)}%`)
+                  console.log(`📐 Desencontro: ${melhorSolucao.desencontro.toFixed(2)}m, Viabilidade: ${melhorSolucao.viabilidade}`)
+                  
+                  const numFaixas = Math.ceil(larguraParede / PLACA_LARGURA)
+                  const padroesPorFaixa: any[] = []
+                  
+                  // Converter o padrão otimizado para o formato do desenho
+                  const desencontroOtimo = melhorSolucao.desencontro
+                  const sequenciaImpares = melhorSolucao.padrao.faixasImpares.sequencia
+                  const sequenciaPares = melhorSolucao.padrao.faixasPares.sequencia
+                  
+                  // Calcular juntas baseadas na sequência otimizada
+                  const juntasImpares: number[] = []
+                  let alturaAcumulada = 0
+                  for (let i = 0; i < sequenciaImpares.length - 1; i++) {
+                    alturaAcumulada += sequenciaImpares[i]
+                    juntasImpares.push(alturaAcumulada)
+                  }
+                  
+                  for (let faixa = 0; faixa < numFaixas; faixa++) {
+                    if (faixa % 2 === 0) {
+                      // FAIXAS ÍMPARES: usar sequência otimizada
+                      padroesPorFaixa.push({
+                        tipo: 'otimizado_impar',
+                        recorteInicial: 0,
+                        recorteParaDesencontro: desencontroOtimo,
+                        juntas: juntasImpares,
+                        sequenciaOtimizada: sequenciaImpares,
+                        viabilidade: melhorSolucao.viabilidade
+                      })
+                    } else {
+                      // FAIXAS PARES: usar sequência otimizada com desencontro
+                      const juntasPares = juntasImpares.map(j => j + desencontroOtimo).filter(j => j < alturaParede)
+                      padroesPorFaixa.push({
+                        tipo: 'otimizado_par',
+                        recorteInicial: desencontroOtimo,
+                        recorteParaDesencontro: desencontroOtimo,
+                        juntas: juntasPares,
+                        sequenciaOtimizada: sequenciaPares,
+                        viabilidade: melhorSolucao.viabilidade
+                      })
+                    }
+                  }
+                  
+                  console.log(`✅ Sistema inteligente aplicado: ${numFaixas} faixas com aproveitamento ${melhorSolucao.aproveitamento.toFixed(1)}%`)
+                  return padroesPorFaixa
+                  
+                } catch (error) {
+                  console.warn('⚠️ Erro no sistema inteligente, usando algoritmo clássico:', error)
+                  // Fallback para algoritmo original
+                }
+                
+                // ALGORITMO CLÁSSICO (fallback)
+                const calcularPadraoClassico = () => {
                 const numFaixas = Math.ceil(larguraParede / PLACA_LARGURA)
                 
                 // Calcular a sobra real que vou ter na altura
@@ -309,10 +596,14 @@ export default function DrywallDrawing({ parede, scale = 50, numeroParede }: Dry
                 }
                 
                 return padroesPorFaixa
+                }
+                
+                // Se chegou até aqui, usar algoritmo clássico
+                return calcularPadraoClassico()
               }
               
               // Calcular padrão de amarração para esta parede
-              const padraoAmarracao = calcularPadraoAmarracao(parede.largura, parede.altura)
+              const padraoAmarracao = calcularPadraoAmarracaoInteligente(parede.largura, parede.altura)
               
               // Função para desenhar placas de uma faixa baseada no padrão otimizado
               const desenharFaixa = (faixa: number, padrao: any) => {
@@ -1133,8 +1424,28 @@ export default function DrywallDrawing({ parede, scale = 50, numeroParede }: Dry
             {(() => {
               const parafusosGuias: JSX.Element[] = []
               const PLACA_LARGURA_GUIA = 1.2 // 1,20m por faixa
-              // Padrão de parafusos por faixa de 1,20m: 0,20 - 0,40 - [pula 0,60] - 0,80 - 1,00
-              const padraoParafusosPorFaixa = [0.20, 0.40, 0.80, 1.00]
+              const espacamentoMontantes = parseFloat(parede.especificacoes.espacamentoMontante)
+              
+              // Parafusos das guias com espaçamento específico por configuração
+              let parafusosBase: number[] = []
+              
+              if (espacamentoMontantes === 0.30) {
+                // Para montantes a cada 0,30m: parafusos das guias a cada 0,15m (15cm)
+                let posicao = 0.15
+                while (posicao <= 1.05) { // Até quase 1,20m
+                  parafusosBase.push(posicao)
+                  posicao += 0.15
+                }
+              } else {
+                // Para outros espaçamentos: parafusos das guias a cada 0,20m (20cm) 
+                parafusosBase = [0.20, 0.40, 0.60, 0.80, 1.00]
+              }
+              
+              // Filtrar para não coincidir com montantes
+              const padraoParafusosPorFaixa = parafusosBase.filter(posicao => {
+                // Verificar se não coincide com posições dos parafusos internos (montantes)
+                return !parafusosInternos.some(montante => Math.abs(posicao - montante) < 0.01)
+              })
               
               const numFaixasGuia = Math.ceil(parede.largura / PLACA_LARGURA_GUIA)
               
@@ -1324,21 +1635,23 @@ export default function DrywallDrawing({ parede, scale = 50, numeroParede }: Dry
                   }
                 }
                 
-                // MEIO DA FAIXA (onde passa o montante intermediário)
-                const xMeio = inicioFaixa + 0.60 // Meio da faixa de 1,20m
-                if (xMeio <= parede.largura && (fimFaixa - inicioFaixa) >= 1.0) { // Só se a faixa tiver pelo menos 1m
-                  const xMeioPixel = xMeio * finalScale
-                  const segmentos = [0, ...juntasHorizontais, parede.altura]
-                  
-                  for (let i = 0; i < segmentos.length - 1; i++) {
-                    distribuirParafusosSegmento(
-                      segmentos[i], 
-                      segmentos[i + 1], 
-                      xMeioPixel, 
-                      `faixa-${faixa}-meio-${i}`
-                    )
+                // MONTANTES INTERMEDIÁRIAS (parafusos internos baseados no espaçamento configurado)
+                parafusosInternos.forEach((posicaoRelativa, montanteIndex) => {
+                  const xMontante = inicioFaixa + posicaoRelativa
+                  if (xMontante <= fimFaixa && xMontante <= parede.largura) {
+                    const xMontantePixel = xMontante * finalScale
+                    const segmentos = [0, ...juntasHorizontais, parede.altura]
+                    
+                    for (let i = 0; i < segmentos.length - 1; i++) {
+                      distribuirParafusosSegmento(
+                        segmentos[i], 
+                        segmentos[i + 1], 
+                        xMontantePixel, 
+                        `montante-${montanteIndex}-segmento-${i}`
+                      )
+                    }
                   }
-                }
+                })
               }
               
               return parafusosLadoA
@@ -1526,21 +1839,23 @@ export default function DrywallDrawing({ parede, scale = 50, numeroParede }: Dry
                   }
                 }
                 
-                // MEIO DA FAIXA (onde passa o montante intermediário)
-                const xMeio = inicioFaixa + 0.60 // Meio da faixa de 1,20m
-                if (xMeio <= parede.largura && (fimFaixa - inicioFaixa) >= 1.0) { // Só se a faixa tiver pelo menos 1m
-                  const xMeioPixel = xMeio * finalScale
-                  const segmentosMeio = [0, ...juntasHorizontaisFaixa, parede.altura]
-                  
-                  for (let i = 0; i < segmentosMeio.length - 1; i++) {
-                    distribuirParafusosSegmento(
-                      segmentosMeio[i], 
-                      segmentosMeio[i + 1], 
-                      xMeioPixel, 
-                      `faixa-${faixa}-meio-${i}`
-                    )
+                // MONTANTES INTERMEDIÁRIAS (parafusos internos baseados no espaçamento configurado)
+                parafusosInternos.forEach((posicaoRelativa, montanteIndex) => {
+                  const xMontante = inicioFaixa + posicaoRelativa
+                  if (xMontante <= fimFaixa && xMontante <= parede.largura) {
+                    const xMontantePixel = xMontante * finalScale
+                    const segmentosMeio = [0, ...juntasHorizontaisFaixa, parede.altura]
+                    
+                    for (let i = 0; i < segmentosMeio.length - 1; i++) {
+                      distribuirParafusosSegmento(
+                        segmentosMeio[i], 
+                        segmentosMeio[i + 1], 
+                        xMontantePixel, 
+                        `montante-${montanteIndex}-segmento-${i}`
+                      )
+                    }
                   }
-                }
+                })
               }
               
               // ENTORNO DOS RECORTES (vãos)

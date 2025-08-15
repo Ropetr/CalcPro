@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { 
   ArrowLeft, 
-  Waves, 
+  Building2, 
   Calculator, 
   FileText, 
   Download,
@@ -57,7 +57,7 @@ interface Medida {
   }
 }
 
-export default function PisoVinilicoPage() {
+export default function DivisoriaDrywallPage() {
   const [modalidade, setModalidade] = useState<'abnt' | 'basica'>('basica')
   const [activeTab, setActiveTab] = useState<'medidas' | 'desenho' | 'materiais'>('medidas')
   const [searchTerm, setSearchTerm] = useState('')
@@ -303,7 +303,7 @@ export default function PisoVinilicoPage() {
   }
 
   const areaTotal = medidas.reduce((total, medida) => total + medida.area, 0)
-  const totalAmbientes = medidas.reduce((total, medida) => total + medida.quantidade, 0)
+  const totalParedes = medidas.reduce((total, medida) => total + medida.quantidade, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (medida: Medida) => {
@@ -360,12 +360,12 @@ export default function PisoVinilicoPage() {
                 Voltar
               </Link>
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                  <Waves className="h-6 w-6 text-indigo-600" />
+                <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+                  <Building2 className="h-6 w-6 text-primary-600" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Piso Vinílico</h1>
-                  <p className="text-sm text-gray-600">SPC, LVT e WPC com instalação click ou colado</p>
+                  <h1 className="text-xl font-bold text-gray-900">Divisória Drywall</h1>
+                  <p className="text-sm text-gray-600">Otimização de projetos com paredes leves</p>
                 </div>
               </div>
             </div>
@@ -404,9 +404,9 @@ export default function PisoVinilicoPage() {
                 </div>
               </div>
               <div className="bg-white rounded-lg shadow p-4 sm:p-6 text-center">
-                <Waves className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
-                <div className="text-sm text-gray-600">Ambientes</div>
-                <div className="text-2xl font-bold text-gray-900">{totalAmbientes}</div>
+                <Building2 className="h-8 w-8 text-green-600 mx-auto mb-3" />
+                <div className="text-sm text-gray-600">Paredes</div>
+                <div className="text-2xl font-bold text-gray-900">{totalParedes}</div>
                 <div className="text-xs text-gray-500 mt-1">
                   {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                   <br />
@@ -657,7 +657,7 @@ export default function PisoVinilicoPage() {
                     {!resultadoCalculo ? (
                       <div className="h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
                         <div className="text-center">
-                          <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                          <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                           <div className="text-gray-600">Desenho técnico será gerado após o cálculo</div>
                           <div className="text-sm text-gray-500">Inclui plano de corte e manual de montagem</div>
                           <div className="text-xs text-gray-500 mt-2">

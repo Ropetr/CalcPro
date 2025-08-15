@@ -945,10 +945,10 @@ export default function ForroModularPage() {
 
       <div className="flex flex-1">
         {/* Sidebar removida - apenas espaçamento */}
-        <div className="w-4 bg-gray-100"></div>
+        <div className="hidden sm:block w-4 bg-gray-100"></div>
 
         {/* Main Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           <div className="max-w-4xl mx-auto">
             {/* Cards de Informação */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -1132,7 +1132,7 @@ export default function ForroModularPage() {
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                           <h4 className="font-semibold text-blue-900 mb-3">🎯 Como Usar:</h4>
                           <ul className="space-y-2 text-sm text-blue-800">

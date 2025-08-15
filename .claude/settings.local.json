@@ -36,7 +36,9 @@
       "Bash(npx tsc:*)",
       "Bash(npx kill-port:*)",
       "Bash(find:*)",
-      "Bash(git clean:*)"
+      "Bash(git clean:*)",
+      "Bash(curl:*)",
+      "Bash(cd:*)"
     ],
     "deny": []
   }

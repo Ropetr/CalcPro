@@ -17,7 +17,8 @@ import {
   Edit3,
   Search,
   Flag,
-  CheckCircle
+  CheckCircle,
+  Scissors
 } from 'lucide-react'
 import Link from 'next/link'
 import { DrywallCalculator, type MedidaParede as MedidaParedeType, type ResultadoCalculoDrywall } from '@/lib/calculators/divisoria-drywall'
@@ -386,14 +387,14 @@ export default function DivisoriaDrywallPage() {
 
       <div className="flex flex-1">
         {/* Sidebar - Removido conforme especificação */}
-        <div className="w-4 bg-gray-100"></div>
+        <div className="hidden sm:block w-4 bg-gray-100"></div>
 
         {/* Main Content - Área de Resultados */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           <div className="max-w-4xl mx-auto">
             {/* Cards de Informação */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 text-center">
                 <Ruler className="h-8 w-8 text-orange-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Área Total</div>
                 <div className="text-2xl font-bold text-gray-900">
@@ -403,7 +404,7 @@ export default function DivisoriaDrywallPage() {
                   {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow p-6 text-center">
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 text-center">
                 <Building2 className="h-8 w-8 text-green-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Paredes</div>
                 <div className="text-2xl font-bold text-gray-900">{totalParedes}</div>
@@ -413,16 +414,26 @@ export default function DivisoriaDrywallPage() {
                   <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova • <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
                 </div>
               </div>
+              <Link href="/dashboard/calculadoras/simulacao-cortes" className="bg-white rounded-lg shadow p-4 sm:p-6 text-center hover:shadow-md transition-shadow group">
+                <Scissors className="h-8 w-8 text-purple-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+                <div className="text-sm text-gray-600">Sistema Inteligente</div>
+                <div className="text-lg font-bold text-gray-900">Otimização de Cortes</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Análise combinatória
+                  <br />
+                  <span className="text-purple-600">Testar amarração →</span>
+                </div>
+              </Link>
             </div>
 
             {/* Área de Desenho Técnico com Abas */}
-            <div className="bg-white rounded-lg shadow mb-8">
+            <div className="bg-white rounded-lg shadow mb-6 sm:mb-8">
               <div className="border-b border-gray-200">
-                <div className="flex items-center justify-between p-6 pb-0">
-                  <div className="flex space-x-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 pb-0 gap-4 sm:gap-0">
+                  <div className="flex space-x-4 sm:space-x-8 overflow-x-auto pb-2 sm:pb-0">
                     <button
                       onClick={() => setActiveTab('medidas')}
-                      className={`pb-4 text-sm font-medium transition-colors border-b-2 ${
+                      className={`pb-4 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                         activeTab === 'medidas'
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -432,7 +443,7 @@ export default function DivisoriaDrywallPage() {
                     </button>
                     <button
                       onClick={() => setActiveTab('desenho')}
-                      className={`pb-4 text-sm font-medium transition-colors border-b-2 ${
+                      className={`pb-4 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                         activeTab === 'desenho'
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -442,7 +453,7 @@ export default function DivisoriaDrywallPage() {
                     </button>
                     <button
                       onClick={() => setActiveTab('materiais')}
-                      className={`pb-4 text-sm font-medium transition-colors border-b-2 ${
+                      className={`pb-4 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                         activeTab === 'materiais'
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -451,7 +462,7 @@ export default function DivisoriaDrywallPage() {
                       Lista de Materiais
                     </button>
                   </div>
-                  <div className="flex items-center space-x-2 pb-4">
+                  <div className="flex items-center space-x-2 pb-4 justify-end">
                     {activeTab === 'medidas' && (
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -460,7 +471,7 @@ export default function DivisoriaDrywallPage() {
                           placeholder="Buscar medidas..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-48"
+                          className="pl-10 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-32 sm:w-48"
                         />
                       </div>
                     )}
@@ -472,7 +483,7 @@ export default function DivisoriaDrywallPage() {
                           placeholder="Buscar medidas..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-48"
+                          className="pl-10 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-32 sm:w-48"
                         />
                       </div>
                     )}
@@ -484,7 +495,7 @@ export default function DivisoriaDrywallPage() {
               </div>
 
               {/* Conteúdo das Abas */}
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {activeTab === 'medidas' && (
                   <div className="space-y-4">
                     {medidas.length === 0 && (
@@ -560,7 +571,7 @@ export default function DivisoriaDrywallPage() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label className="block text-xs text-gray-600">Largura (m)</label>
@@ -841,8 +852,8 @@ export default function DivisoriaDrywallPage() {
         if (!medida) return null
         
         return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-auto">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold">Especificações da Parede</h3>
@@ -1001,8 +1012,8 @@ export default function DivisoriaDrywallPage() {
         if (!medida) return null
         
         return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-auto">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-semibold">Vãos e Aberturas</h3>

@@ -28,6 +28,7 @@ interface Medida {
   nome: string
   altura: string
   largura: string
+  quantidade: number  // ✨ Nova propriedade para multiplicação
   descricao: string
   area: number
   especificacoes: {
@@ -84,7 +85,8 @@ export default function PisoLaminadoPage() {
     return formatted
   }
 
-  // Estado para lembrar última altura usada (auto-preenchimento)
+  // Estados para auto-preenchimento opcional (ativado pelo usuário)
+  const [alturaFixaAtivada, setAlturaFixaAtivada] = useState<boolean>(false)
   const [ultimaAlturaUsada, setUltimaAlturaUsada] = useState<string>('')
 
   const [medidas, setMedidas] = useState<Medida[]>([
@@ -93,6 +95,7 @@ export default function PisoLaminadoPage() {
       nome: '',
       altura: '',
       largura: '',
+      quantidade: 1,  // ✨ Padrão: 1 ambiente
       descricao: '',
       area: 0,
       especificacoes: {
@@ -142,7 +145,7 @@ export default function PisoLaminadoPage() {
         adicionarMedida()
         // Focar no primeiro campo (largura) da nova medida após um pequeno delay
         setTimeout(() => {
-          const novoInput = document.querySelector('[data-medida-id]:last-child input[type="text"]') as HTMLInputElement
+          const novoInput = document.querySelector('[data-medida-id]:last-child input[data-nav-index="0"]') as HTMLInputElement
           if (novoInput) {
             novoInput.focus()
           }
@@ -239,8 +242,9 @@ export default function PisoLaminadoPage() {
     const novoItem: Medida = {
       id: novaId,
       nome: '',
-      altura: ultimaAlturaUsada, // ✨ Auto-preenchimento da altura
-      largura: '',
+      altura: alturaFixaAtivada ? ultimaAlturaUsada : '', // ✨ Altura fixa se ativada
+      largura: '', // Largura sempre vazia para novo ambiente
+      quantidade: 1, // ✨ Padrão: 1 ambiente
       descricao: '',
       area: 0,
       especificacoes: especificacoesPadrao ? {
@@ -286,11 +290,6 @@ export default function PisoLaminadoPage() {
   }
 
   const atualizarMedida = (id: string, campo: keyof Medida, valor: any) => {
-    // ✨ Salvar altura para auto-preenchimento dos próximos pisos
-    if (campo === 'altura' && typeof valor === 'string' && valor.trim()) {
-      setUltimaAlturaUsada(valor)
-    }
-    
     setMedidas(medidas.map(medida => {
       if (medida.id === id) {
         if (campo === 'especificacoes') {
@@ -306,11 +305,12 @@ export default function PisoLaminadoPage() {
         } else {
           const updated = { ...medida, [campo]: valor }
           
-          // Calcular área automaticamente
-          if (campo === 'altura' || campo === 'largura') {
+          // Calcular área automaticamente (incluindo quantidade)
+          if (campo === 'altura' || campo === 'largura' || campo === 'quantidade') {
             const altura = parseFloat((campo === 'altura' ? valor : updated.altura).replace(',', '.')) || 0
             const largura = parseFloat((campo === 'largura' ? valor : updated.largura).replace(',', '.')) || 0
-            updated.area = altura * largura
+            const quantidade = campo === 'quantidade' ? valor : updated.quantidade
+            updated.area = altura * largura * quantidade
           }
           return updated
         }
@@ -320,6 +320,7 @@ export default function PisoLaminadoPage() {
   }
 
   const areaTotal = medidas.reduce((total, medida) => total + medida.area, 0)
+  const totalAmbientes = medidas.reduce((total, medida) => total + medida.quantidade, 0)
 
   // Função para determinar a cor da flag de especificações
   const getCorFlagEspecificacoes = (medida: Medida) => {
@@ -377,7 +378,7 @@ export default function PisoLaminadoPage() {
               </Link>
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
-                  <Package className="h-6 w-6 text-yellow-600" />
+                  <Ruler className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Piso Laminado</h1>
@@ -402,43 +403,43 @@ export default function PisoLaminadoPage() {
 
       <div className="flex flex-1">
         {/* Sidebar - Removido conforme especificação */}
-        <div className="w-4 bg-gray-100"></div>
+        <div className="hidden sm:block w-4 bg-gray-100"></div>
 
         {/* Main Content - Área de Resultados */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-3 sm:p-6">
           <div className="max-w-4xl mx-auto">
             {/* Cards de Informação */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6 text-center">
-                <Ruler className="h-8 w-8 text-yellow-600 mx-auto mb-3" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 text-center">
+                <Ruler className="h-8 w-8 text-orange-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Área Total</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {areaTotal.toFixed(2)} m²
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {medidas.length} ambiente{medidas.length !== 1 ? 's' : ''}
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                 </div>
               </div>
-              <div className="bg-white rounded-lg shadow p-6 text-center">
-                <Package className="h-8 w-8 text-blue-600 mx-auto mb-3" />
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 text-center">
+                <Package className="h-8 w-8 text-green-600 mx-auto mb-3" />
                 <div className="text-sm text-gray-600">Ambientes</div>
-                <div className="text-2xl font-bold text-gray-900">{medidas.length}</div>
+                <div className="text-2xl font-bold text-gray-900">{totalAmbientes}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova medida
+                  {medidas.length} medida{medidas.length !== 1 ? 's' : ''}
                   <br />
-                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Tab</kbd> nova • <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">Enter</kbd> calcular
                 </div>
               </div>
             </div>
 
             {/* Área de Desenho Técnico com Abas */}
-            <div className="bg-white rounded-lg shadow mb-8">
+            <div className="bg-white rounded-lg shadow mb-6 sm:mb-8">
               <div className="border-b border-gray-200">
-                <div className="flex items-center justify-between p-6 pb-0">
-                  <div className="flex space-x-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 pb-0 gap-4 sm:gap-0">
+                  <div className="flex space-x-4 sm:space-x-8 overflow-x-auto pb-2 sm:pb-0">
                     <button
                       onClick={() => setActiveTab('medidas')}
-                      className={`pb-4 text-sm font-medium transition-colors border-b-2 ${
+                      className={`pb-4 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                         activeTab === 'medidas'
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -448,7 +449,7 @@ export default function PisoLaminadoPage() {
                     </button>
                     <button
                       onClick={() => setActiveTab('desenho')}
-                      className={`pb-4 text-sm font-medium transition-colors border-b-2 ${
+                      className={`pb-4 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                         activeTab === 'desenho'
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -458,7 +459,7 @@ export default function PisoLaminadoPage() {
                     </button>
                     <button
                       onClick={() => setActiveTab('materiais')}
-                      className={`pb-4 text-sm font-medium transition-colors border-b-2 ${
+                      className={`pb-4 text-xs sm:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                         activeTab === 'materiais'
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -523,16 +524,12 @@ export default function PisoLaminadoPage() {
                           <div key={medida.id} className="border border-gray-200 rounded-lg p-4" data-medida-id={medida.id}>
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-yellow-600">{displayNumber}</span>
+                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-medium text-purple-600">{displayNumber}</span>
                                 </div>
-                            <input
-                              type="text"
-                              value={medida.nome}
-                              onChange={(e) => atualizarMedida(medida.id, 'nome', e.target.value)}
-                              className="text-sm font-medium bg-transparent border-none focus:ring-0 p-0"
-                              placeholder="Nome do ambiente"
-                            />
+                                <div className="text-sm text-gray-600">
+                                  {medida.area.toFixed(2)} m² {medida.quantidade > 1 ? `(${medida.quantidade}× ambientes)` : ''}
+                                </div>
                           </div>
                           <div className="flex items-center space-x-2">
                             <div className="flex items-center space-x-1 mr-3">
@@ -568,9 +565,6 @@ export default function PisoLaminadoPage() {
                                 <Flag className="h-3 w-3" />
                               </button>
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {medida.area.toFixed(2)} m²
-                            </div>
                             {medidas.length > 1 && (
                               <button
                                 onClick={() => removerMedida(medida.id)}
@@ -584,7 +578,23 @@ export default function PisoLaminadoPage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Largura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Largura (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs text-gray-500">×</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="99"
+                                  value={medida.quantidade === 1 ? '' : medida.quantidade}
+                                  onChange={(e) => atualizarMedida(medida.id, 'quantidade', parseInt(e.target.value) || 1)}
+                                  className="w-14 h-5 text-xs border border-gray-300 rounded pl-1 pr-1 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder=""
+                                  title="Quantidade de ambientes iguais (deixe vazio para 1 ambiente)"
+                                  tabIndex={-1}
+                                />
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.largura}
@@ -600,14 +610,37 @@ export default function PisoLaminadoPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Altura (m)</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs text-gray-600">Altura (m)</label>
+                              <div className="flex items-center space-x-1">
+                                <input
+                                  type="checkbox"
+                                  checked={alturaFixaAtivada}
+                                  onChange={(e) => setAlturaFixaAtivada(e.target.checked)}
+                                  className="w-3 h-3 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500"
+                                  title="Usar última altura inserida nos próximos ambientes"
+                                  tabIndex={-1}
+                                />
+                                <span className="text-xs text-gray-500" title="Usar última altura inserida nos próximos ambientes">fixar</span>
+                              </div>
+                            </div>
                             <input
                               type="text"
                               value={medida.altura}
-                              onChange={(e) => atualizarMedida(medida.id, 'altura', e.target.value)}
+                              onChange={(e) => {
+                                atualizarMedida(medida.id, 'altura', e.target.value)
+                                // Salvar altura para próximos ambientes se checkbox ativado
+                                if (alturaFixaAtivada && e.target.value.trim()) {
+                                  setUltimaAlturaUsada(e.target.value)
+                                }
+                              }}
                               onBlur={(e) => {
                                 const formatted = handleDimensionBlur('altura', e.target.value)
                                 atualizarMedida(medida.id, 'altura', formatted)
+                                // Salvar altura formatada para próximos ambientes se checkbox ativado
+                                if (formatted.trim()) {
+                                  setUltimaAlturaUsada(formatted)
+                                }
                               }}
                               onKeyDown={handleKeyDown}
                               className="input-field text-sm"
@@ -673,22 +706,22 @@ export default function PisoLaminadoPage() {
                     ) : (
                       <div className="space-y-6">
                         {/* Resumo do Cálculo */}
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-yellow-900">Resumo do Cálculo</h3>
+                            <h3 className="font-semibold text-purple-900">Resumo do Cálculo</h3>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                             <div className="text-center">
-                              <div className="text-lg font-bold text-yellow-900">{resultadoCalculo.areaTotal.toFixed(2)}</div>
-                              <div className="text-yellow-700">m² líquidos</div>
+                              <div className="text-lg font-bold text-purple-900">{resultadoCalculo.areaTotal.toFixed(2)}</div>
+                              <div className="text-purple-700">m² líquidos</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-yellow-900">{resultadoCalculo.resumo.totalLaminado}</div>
-                              <div className="text-yellow-700">piso (m²)</div>
+                              <div className="text-lg font-bold text-purple-900">{resultadoCalculo.resumo.totalLaminado}</div>
+                              <div className="text-purple-700">piso (m²)</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-yellow-900">{resultadoCalculo.resumo.totalRodape}</div>
-                              <div className="text-yellow-700">rodapé (m)</div>
+                              <div className="text-lg font-bold text-purple-900">{resultadoCalculo.resumo.totalRodape}</div>
+                              <div className="text-purple-700">rodapé (m)</div>
                             </div>
                           </div>
                         </div>
@@ -791,7 +824,7 @@ export default function PisoLaminadoPage() {
       {activeTab === 'medidas' && (
         <button
           onClick={adicionarMedida}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+          className="fixed bottom-8 right-8 w-14 h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
           title="Adicionar nova medida"
         >
           <Plus className="h-6 w-6" />
@@ -933,7 +966,7 @@ export default function PisoLaminadoPage() {
                     
                     setModalAberto({tipo: null, medidaId: null})
                   }}
-                  className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
                 >
                   Salvar
                 </button>
@@ -974,8 +1007,8 @@ export default function PisoLaminadoPage() {
                 </button>
               </div>
               <div className="space-y-4">
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="text-xs text-yellow-800">
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="text-xs text-purple-800">
                     💡 <strong>Sistema de cores:</strong> 🔴 Sem dados/configurar → 🟢 Com vãos
                   </div>
                 </div>
@@ -1139,7 +1172,7 @@ export default function PisoLaminadoPage() {
                     atualizarMedida(medida.id, 'vaos', { preenchido: true })
                     setModalAberto({tipo: null, medidaId: null})
                   }}
-                  className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
                 >
                   Salvar
                 </button>
