@@ -2206,6 +2206,292 @@ export default function DrywallDrawing({ parede, scale = 50, numeroParede }: Dry
         )}
       </div>
       
+      {/* Legenda Visual de Amarração */}
+      {(() => {
+        // Recuperar dados da análise otimizada para mostrar na legenda
+        const tipoChapa = parede.especificacoes.tipoChapa
+        const analiseOtimizada = analisarCortesOtimizados(parede.altura, tipoChapa, 0.30)
+        const melhorSolucao = analiseOtimizada.recomendacao
+        
+        const sequenciaImpares = melhorSolucao.padrao.faixasImpares.sequencia
+        const sequenciaPares = melhorSolucao.padrao.faixasPares.sequencia
+        const desencontro = melhorSolucao.desencontro
+        
+        // Escala para a legenda (menor que o desenho principal)
+        const legendaScale = 15
+        const legendaWidth = 120 // 8m * 15 = 120px
+        const alturaLegenda = parede.altura * legendaScale
+        const larguraFaixa = 60 // Metade da largura para cada faixa
+        
+        return (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+              📐 Padrão de Amarração Otimizado
+              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                {melhorSolucao.aproveitamento.toFixed(1)}% aproveitamento
+              </span>
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Faixa Ímpar */}
+              <div>
+                <h4 className="text-xs font-medium text-gray-700 mb-2">Faixas Ímpares (1ª, 3ª, 5ª...)</h4>
+                <div className="relative">
+                  <svg width={larguraFaixa + 40} height={alturaLegenda + 40} className="border border-gray-300 bg-white rounded">
+                    {/* Retângulo da faixa */}
+                    <rect
+                      x={20}
+                      y={20}
+                      width={larguraFaixa}
+                      height={alturaLegenda}
+                      fill="none"
+                      stroke="#374151"
+                      strokeWidth="2"
+                    />
+                    
+                    {/* Divisões das chapas */}
+                    {(() => {
+                      let alturaAcumulada = 0
+                      const elementos: JSX.Element[] = []
+                      
+                      sequenciaImpares.forEach((altura, index) => {
+                        const yInicio = 20 + alturaAcumulada * legendaScale
+                        const yFim = 20 + (alturaAcumulada + altura) * legendaScale
+                        
+                        // Linha horizontal de divisão (exceto na primeira)
+                        if (index > 0) {
+                          elementos.push(
+                            <line
+                              key={`divisao-${index}`}
+                              x1={20}
+                              y1={yInicio}
+                              x2={20 + larguraFaixa}
+                              y2={yInicio}
+                              stroke="#dc2626"
+                              strokeWidth="2"
+                              strokeDasharray="3,2"
+                            />
+                          )
+                        }
+                        
+                        // Cota da altura
+                        const yMeio = (yInicio + yFim) / 2
+                        elementos.push(
+                          <g key={`cota-${index}`}>
+                            {/* Linha de cota à direita */}
+                            <line
+                              x1={20 + larguraFaixa + 5}
+                              y1={yInicio}
+                              x2={20 + larguraFaixa + 15}
+                              y2={yInicio}
+                              stroke="#6b7280"
+                              strokeWidth="1"
+                            />
+                            <line
+                              x1={20 + larguraFaixa + 5}
+                              y1={yFim}
+                              x2={20 + larguraFaixa + 15}
+                              y2={yFim}
+                              stroke="#6b7280"
+                              strokeWidth="1"
+                            />
+                            <line
+                              x1={20 + larguraFaixa + 10}
+                              y1={yInicio}
+                              x2={20 + larguraFaixa + 10}
+                              y2={yFim}
+                              stroke="#6b7280"
+                              strokeWidth="1"
+                            />
+                            {/* Texto da medida */}
+                            <text
+                              x={20 + larguraFaixa + 25}
+                              y={yMeio + 3}
+                              fill="#374151"
+                              fontSize="10"
+                              textAnchor="start"
+                              fontWeight="bold"
+                            >
+                              {altura.toFixed(2)}m
+                            </text>
+                          </g>
+                        )
+                        
+                        alturaAcumulada += altura
+                      })
+                      
+                      return elementos
+                    })()}
+                    
+                    {/* Título da faixa */}
+                    <text
+                      x={20 + larguraFaixa/2}
+                      y={15}
+                      fill="#374151"
+                      fontSize="10"
+                      textAnchor="middle"
+                      fontWeight="bold"
+                    >
+                      Faixa Ímpar
+                    </text>
+                  </svg>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  <div className="font-medium">Sequência: {sequenciaImpares.map(h => h.toFixed(2)).join(' + ')}m</div>
+                  <div>Total: {sequenciaImpares.reduce((sum, h) => sum + h, 0).toFixed(2)}m</div>
+                </div>
+              </div>
+              
+              {/* Faixa Par */}
+              <div>
+                <h4 className="text-xs font-medium text-gray-700 mb-2">Faixas Pares (2ª, 4ª, 6ª...)</h4>
+                <div className="relative">
+                  <svg width={larguraFaixa + 40} height={alturaLegenda + 40} className="border border-gray-300 bg-white rounded">
+                    {/* Retângulo da faixa */}
+                    <rect
+                      x={20}
+                      y={20}
+                      width={larguraFaixa}
+                      height={alturaLegenda}
+                      fill="none"
+                      stroke="#374151"
+                      strokeWidth="2"
+                    />
+                    
+                    {/* Divisões das chapas */}
+                    {(() => {
+                      let alturaAcumulada = 0
+                      const elementos: JSX.Element[] = []
+                      
+                      sequenciaPares.forEach((altura, index) => {
+                        const yInicio = 20 + alturaAcumulada * legendaScale
+                        const yFim = 20 + (alturaAcumulada + altura) * legendaScale
+                        
+                        // Linha horizontal de divisão (exceto na primeira)
+                        if (index > 0) {
+                          elementos.push(
+                            <line
+                              key={`divisao-par-${index}`}
+                              x1={20}
+                              y1={yInicio}
+                              x2={20 + larguraFaixa}
+                              y2={yInicio}
+                              stroke="#dc2626"
+                              strokeWidth="2"
+                              strokeDasharray="3,2"
+                            />
+                          )
+                        }
+                        
+                        // Destaque do recorte inicial (desencontro) em cor diferente
+                        if (index === 0 && altura === desencontro) {
+                          elementos.push(
+                            <rect
+                              key="desencontro-destaque"
+                              x={20}
+                              y={yInicio}
+                              width={larguraFaixa}
+                              height={(yFim - yInicio)}
+                              fill="#fef3c7"
+                              stroke="#f59e0b"
+                              strokeWidth="1"
+                              fillOpacity="0.3"
+                            />
+                          )
+                        }
+                        
+                        // Cota da altura
+                        const yMeio = (yInicio + yFim) / 2
+                        elementos.push(
+                          <g key={`cota-par-${index}`}>
+                            {/* Linha de cota à direita */}
+                            <line
+                              x1={20 + larguraFaixa + 5}
+                              y1={yInicio}
+                              x2={20 + larguraFaixa + 15}
+                              y2={yInicio}
+                              stroke="#6b7280"
+                              strokeWidth="1"
+                            />
+                            <line
+                              x1={20 + larguraFaixa + 5}
+                              y1={yFim}
+                              x2={20 + larguraFaixa + 15}
+                              y2={yFim}
+                              stroke="#6b7280"
+                              strokeWidth="1"
+                            />
+                            <line
+                              x1={20 + larguraFaixa + 10}
+                              y1={yInicio}
+                              x2={20 + larguraFaixa + 10}
+                              y2={yFim}
+                              stroke="#6b7280"
+                              strokeWidth="1"
+                            />
+                            {/* Texto da medida */}
+                            <text
+                              x={20 + larguraFaixa + 25}
+                              y={yMeio + 3}
+                              fill={index === 0 && altura === desencontro ? "#f59e0b" : "#374151"}
+                              fontSize="10"
+                              textAnchor="start"
+                              fontWeight="bold"
+                            >
+                              {altura.toFixed(2)}m
+                              {index === 0 && altura === desencontro && (
+                                <tspan fontSize="8" fill="#f59e0b"> (desencontro)</tspan>
+                              )}
+                            </text>
+                          </g>
+                        )
+                        
+                        alturaAcumulada += altura
+                      })
+                      
+                      return elementos
+                    })()}
+                    
+                    {/* Título da faixa */}
+                    <text
+                      x={20 + larguraFaixa/2}
+                      y={15}
+                      fill="#374151"
+                      fontSize="10"
+                      textAnchor="middle"
+                      fontWeight="bold"
+                    >
+                      Faixa Par
+                    </text>
+                  </svg>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  <div className="font-medium">Sequência: {sequenciaPares.map(h => h.toFixed(2)).join(' + ')}m</div>
+                  <div>Total: {sequenciaPares.reduce((sum, h) => sum + h, 0).toFixed(2)}m</div>
+                  <div className="text-amber-700 font-medium">Desencontro: {desencontro.toFixed(2)}m</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Resumo da otimização */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs bg-white p-3 rounded border">
+              <div className="text-center">
+                <div className="font-semibold text-lg text-green-600">{melhorSolucao.aproveitamento.toFixed(1)}%</div>
+                <div className="text-gray-600">Aproveitamento</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-lg text-blue-600">{desencontro.toFixed(2)}m</div>
+                <div className="text-gray-600">Desencontro</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-lg text-purple-600">Divisão {melhorSolucao.divisao}</div>
+                <div className="text-gray-600">Solução Otimizada</div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+      
       {/* Informações técnicas */}
       <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
