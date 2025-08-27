@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { useKeyboardNavigation } from '@/lib/ui-standards/navigation/useKeyboardNavigation'
 import { NavigationHelp } from '@/lib/ui-standards/navigation/components/NavigationHelp'
 import { autoCompleteDimension } from '@/lib/ui-standards/formatting/formatters'
+import { DivisoriaNavalCalculator, type MedidaDivisoria, type ResultadoCalculoDivisoriaNaval } from '@/lib/calculators/divisoria-naval'
 
 interface Medida {
   id: string
@@ -64,7 +65,8 @@ export default function DivisoriaNavalPage() {
     perfilRequadramento: 'padrao' | 'cromado' | 'anodizado'
     acabamento: 'melaminico' | 'texturizado' | 'formica' | 'verniz'
   } | null>(null)
-  const [resultadoCalculo, setResultadoCalculo] = useState<any | null>(null)
+  const [resultadoCalculo, setResultadoCalculo] = useState<ResultadoCalculoDivisoriaNaval | null>(null)
+  const [calculadora] = useState(new DivisoriaNavalCalculator())
   
   // Sistema de navegação por teclado
   const navigation = useKeyboardNavigation()
@@ -155,71 +157,52 @@ export default function DivisoriaNavalPage() {
 
   const calcularMateriais = () => {
     try {
-      // Simular cálculo de materiais para divisória naval
-      const medidasValidas = medidas.filter(medida => 
-        parseFloat(medida.altura.replace(',', '.')) > 0 && 
-        parseFloat(medida.largura.replace(',', '.')) > 0
-      )
+      // Converter medidas da interface para o formato da calculadora
+      const medidasParaCalculadora: MedidaDivisoria[] = medidas
+        .filter(medida => 
+          parseFloat(medida.altura.replace(',', '.')) > 0 && 
+          parseFloat(medida.largura.replace(',', '.')) > 0
+        )
+        .map(medida => ({
+          id: medida.id,
+          altura: parseFloat(medida.altura.replace(',', '.')),
+          largura: parseFloat(medida.largura.replace(',', '.')),
+          quantidade: medida.quantidade,
+          descricao: medida.descricao,
+          area: parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.')) * medida.quantidade,
+          especificacoes: {
+            tipoPanel: medida.especificacoes.tipoPanel,
+            perfilJuncao: medida.especificacoes.perfilJuncao,
+            perfilRequadramento: medida.especificacoes.perfilRequadramento,
+            acabamento: medida.especificacoes.acabamento,
+            preenchido: medida.especificacoes.preenchido
+          },
+          vaos: {
+            vidros: {
+              quantidade: parseInt(medida.vaos.vidros.quantidade) || 0,
+              largura: parseFloat(medida.vaos.vidros.largura.replace(',', '.')) || 0,
+              altura: parseFloat(medida.vaos.vidros.altura.replace(',', '.')) || 0
+            },
+            portas: {
+              quantidade: parseInt(medida.vaos.portas.quantidade) || 0,
+              largura: parseFloat(medida.vaos.portas.largura.replace(',', '.')) || 0,
+              altura: parseFloat(medida.vaos.portas.altura.replace(',', '.')) || 0
+            },
+            preenchido: medida.vaos.preenchido
+          }
+        }))
       
-      if (medidasValidas.length === 0) {
+      if (medidasParaCalculadora.length === 0) {
         alert('Adicione pelo menos uma medida válida para calcular')
         return
       }
       
-      // Resultado fictício para demonstrar a estrutura
-      const resultado = {
-        areaTotal: medidasValidas.reduce((total, medida) => 
-          total + (parseFloat(medida.altura.replace(',', '.')) * parseFloat(medida.largura.replace(',', '.'))), 0
-        ),
-        resumo: {
-          totalPaineis: Math.ceil(medidasValidas.length * 1.1),
-          totalPerfis: Math.ceil(medidasValidas.length * 2.5),
-          totalAcessorios: medidasValidas.reduce((total, medida) => 
-            total + parseInt(medida.vaos.vidros.quantidade) + parseInt(medida.vaos.portas.quantidade), 0
-          )
-        },
-        materiais: {
-          paineis: [
-            {
-              item: `Painel Naval ${espessura}mm`,
-              descricao: "Painel com miolo colmeia e laminado melamínico",
-              quantidade: Math.ceil(medidasValidas.length * 1.1),
-              unidade: "un",
-              observacoes: "Inclui 10% de aproveitamento"
-            }
-          ],
-          perfis: [
-            {
-              item: "Perfil H - Junção",
-              descricao: "Perfil de alumínio para junção entre painéis",
-              quantidade: Math.ceil(medidasValidas.length * 1.5),
-              unidade: "m",
-              observacoes: "Barras de 6,00m"
-            },
-            {
-              item: "Perfil U - Requadramento",
-              descricao: "Perfil de alumínio para acabamento",
-              quantidade: Math.ceil(medidasValidas.length * 2.0),
-              unidade: "m",
-              observacoes: "Para piso e teto"
-            }
-          ],
-          acessorios: [
-            {
-              item: "Kit de Fixação",
-              descricao: "Parafusos, buchas e tarugos",
-              quantidade: medidasValidas.length,
-              unidade: "kit",
-              observacoes: "Por divisória"
-            }
-          ]
-        }
-      }
-      
+      // USAR O ENGINE REAL DE CÁLCULO
+      const resultado = calculadora.calcular(medidasParaCalculadora)
       setResultadoCalculo(resultado)
       setActiveTab('materiais')
       
-      console.log('Cálculo realizado com sucesso:', resultado)
+      console.log('Cálculo realizado com sistema robusto:', resultado)
     } catch (error) {
       console.error('Erro ao calcular materiais:', error)
       alert('Erro ao calcular materiais. Verifique os dados inseridos.')
@@ -692,19 +675,28 @@ export default function DivisoriaNavalPage() {
                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
                             <h3 className="font-semibold text-orange-900">Resumo do Cálculo</h3>
+                            <div className="text-xs text-orange-700">Sistema robusto com aproveitamento</div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div className="text-center">
-                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.areaTotal.toFixed(2)}</div>
+                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.resumo.area_liquida.toFixed(2)}</div>
                               <div className="text-orange-700">m² líquidos</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.resumo.totalPaineis}</div>
+                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.resumo.total_paredes}</div>
+                              <div className="text-orange-700">divisórias</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-orange-900">
+                                {(resultadoCalculo.materiais.paineis.painel_1_20 + resultadoCalculo.materiais.paineis.painel_0_82)}
+                              </div>
                               <div className="text-orange-700">painéis</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-bold text-orange-900">{resultadoCalculo.resumo.totalPerfis}</div>
-                              <div className="text-orange-700">perfis (m)</div>
+                              <div className="text-lg font-bold text-orange-900">
+                                {(resultadoCalculo.materiais.perfis_h.h_3_00 + resultadoCalculo.materiais.perfis_h.h_2_15 + resultadoCalculo.materiais.perfis_h.h_1_18)}
+                              </div>
+                              <div className="text-orange-700">perfis H</div>
                             </div>
                           </div>
                         </div>
@@ -719,20 +711,38 @@ export default function DivisoriaNavalPage() {
                           </div>
                           <div className="p-4">
                             <div className="space-y-3">
-                              {resultadoCalculo.materiais.paineis.map((item: any, index: number) => (
-                                <div key={index} className="flex justify-between items-start">
+                              {resultadoCalculo.materiais.paineis.painel_1_20 > 0 && (
+                                <div className="flex justify-between items-start">
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{item.item}</div>
-                                    <div className="text-sm text-gray-600">{item.descricao}</div>
-                                    {item.observacoes && (
-                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
-                                    )}
+                                    <div className="font-medium text-gray-900">Painel Naval 1,20m × 2,10m</div>
+                                    <div className="text-sm text-gray-600">Painel com miolo colmeia e laminado melamínico</div>
+                                    <div className="text-xs text-gray-500 mt-1">Otimizado com sistema de aproveitamento</div>
                                   </div>
                                   <div className="text-right ml-4">
-                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.paineis.painel_1_20} un</div>
                                   </div>
                                 </div>
-                              ))}
+                              )}
+                              {resultadoCalculo.materiais.paineis.painel_0_82 > 0 && (
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">Painel Naval 0,82m × 2,10m</div>
+                                    <div className="text-sm text-gray-600">Painel com miolo colmeia e laminado melamínico</div>
+                                    <div className="text-xs text-gray-500 mt-1">Usado para otimização de cortes</div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.paineis.painel_0_82} un</div>
+                                  </div>
+                                </div>
+                              )}
+                              <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm text-green-800 font-medium">Aproveitamento</div>
+                                  <div className="text-sm text-green-600">
+                                    {(100 - resultadoCalculo.materiais.paineis.desperdicio_paineis).toFixed(1)}% eficiência
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -747,20 +757,80 @@ export default function DivisoriaNavalPage() {
                           </div>
                           <div className="p-4">
                             <div className="space-y-3">
-                              {resultadoCalculo.materiais.perfis.map((item: any, index: number) => (
-                                <div key={index} className="flex justify-between items-start">
+                              {resultadoCalculo.materiais.perfis_h.h_3_00 > 0 && (
+                                <div className="flex justify-between items-start">
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{item.item}</div>
-                                    <div className="text-sm text-gray-600">{item.descricao}</div>
-                                    {item.observacoes && (
-                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
-                                    )}
+                                    <div className="font-medium text-gray-900">Perfil H 3,00m</div>
+                                    <div className="text-sm text-gray-600">Para alturas até 3,00m - usado em pé</div>
+                                    <div className="text-xs text-gray-500 mt-1">Junção entre painéis verticais</div>
                                   </div>
                                   <div className="text-right ml-4">
-                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.perfis_h.h_3_00} un</div>
                                   </div>
                                 </div>
-                              ))}
+                              )}
+                              {resultadoCalculo.materiais.perfis_h.h_2_15 > 0 && (
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">Perfil H 2,15m</div>
+                                    <div className="text-sm text-gray-600">Para alturas até 2,10m - usado em pé</div>
+                                    <div className="text-xs text-gray-500 mt-1">Junção entre painéis verticais</div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.perfis_h.h_2_15} un</div>
+                                  </div>
+                                </div>
+                              )}
+                              {resultadoCalculo.materiais.perfis_h.h_1_18 > 0 && (
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">Perfil H 1,18m</div>
+                                    <div className="text-sm text-gray-600">Usado deitado - entre camadas</div>
+                                    <div className="text-xs text-gray-500 mt-1">Junção horizontal painel/recorte</div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.perfis_h.h_1_18} un</div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Perfis U */}
+                        <div className="bg-white border border-gray-200 rounded-lg">
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <Ruler className="h-5 w-5 mr-2 text-gray-600" />
+                              Perfis U - Requadramento
+                            </h3>
+                          </div>
+                          <div className="p-4">
+                            <div className="space-y-3">
+                              {resultadoCalculo.materiais.perfis_u.u_3_00 > 0 && (
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">Perfil U 3,00m</div>
+                                    <div className="text-sm text-gray-600">Para requadramento - piso, teto e laterais</div>
+                                    <div className="text-xs text-gray-500 mt-1">Sistema de aproveitamento otimizado</div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.perfis_u.u_3_00} un</div>
+                                  </div>
+                                </div>
+                              )}
+                              {resultadoCalculo.materiais.perfis_u.u_2_15 > 0 && (
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900">Perfil U 2,15m</div>
+                                    <div className="text-sm text-gray-600">Para alturas menores - laterais</div>
+                                    <div className="text-xs text-gray-500 mt-1">Requadramento otimizado</div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.perfis_u.u_2_15} un</div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -775,20 +845,36 @@ export default function DivisoriaNavalPage() {
                           </div>
                           <div className="p-4">
                             <div className="space-y-3">
-                              {resultadoCalculo.materiais.acessorios.map((item: any, index: number) => (
-                                <div key={index} className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{item.item}</div>
-                                    <div className="text-sm text-gray-600">{item.descricao}</div>
-                                    {item.observacoes && (
-                                      <div className="text-xs text-gray-500 mt-1">{item.observacoes}</div>
-                                    )}
-                                  </div>
-                                  <div className="text-right ml-4">
-                                    <div className="font-semibold text-gray-900">{item.quantidade} {item.unidade}</div>
-                                  </div>
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">Kit de Fixação</div>
+                                  <div className="text-sm text-gray-600">Parafusos, buchas e tarugos completos</div>
+                                  <div className="text-xs text-gray-500 mt-1">Por divisória instalada</div>
                                 </div>
-                              ))}
+                                <div className="text-right ml-4">
+                                  <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.acessorios.kit_fixacao} kit</div>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">Parafuso 4,2 × 13mm</div>
+                                  <div className="text-sm text-gray-600">Para fixação dos painéis</div>
+                                  <div className="text-xs text-gray-500 mt-1">Estimativa baseada em área</div>
+                                </div>
+                                <div className="text-right ml-4">
+                                  <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.acessorios.parafusos_4_2_13} un</div>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">Buchas</div>
+                                  <div className="text-sm text-gray-600">Para fixação na estrutura</div>
+                                  <div className="text-xs text-gray-500 mt-1">Estimativa por divisória</div>
+                                </div>
+                                <div className="text-right ml-4">
+                                  <div className="font-semibold text-gray-900">{resultadoCalculo.materiais.acessorios.buchas} un</div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
